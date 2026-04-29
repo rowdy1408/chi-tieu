@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Gia đình Gấu Cá</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- LOGIN PAGE -->
+  <section id="login-page" class="page login-page">
+    <div class="login-card">
+      <h1>Chào mừng đến với gia đình Gấu Cá</h1>
+      <p>Papa hay Mama đây ạ.?</p>
+
+      <input 
+        type="password" 
+        id="password-input" 
+        placeholder="Nhập password yêu thương..." 
+      />
+
+      <button onclick="login()">Vào thôi!</button>
+
+      <p id="login-error" class="error-message"></p>
+    </div>
+  </section>
+
+  <!-- MAIN APP -->
+  <section id="app-page" class="page hidden">
+    <header class="app-header">
+      <div>
+        <h1 id="page-title">Quản lý chi tiêu</h1>
+        <p id="page-subtitle">Theo dõi tiền vào, tiền ra và số dư</p>
+      </div>
+
+      <div class="header-actions">
+  <button id="personal-nav-btn" onclick="goBackToPersonalPage()">Trang của mình</button>
+  <button onclick="showSharedPage()">Chi tiêu chung</button>
+  <button onclick="showSummaryPage()">Tổng 2 đứa</button>
+  <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+</div>
+    </header>
+
+    <!-- PERSONAL PAGE: CÁ / GẤU -->
+    <main id="personal-page" class="content hidden">
+      <section class="month-control">
+        <button onclick="changeMonth(-1)">← Tháng trước</button>
+
+        <h2 id="current-month-label"></h2>
+
+        <button onclick="changeMonth(1)">Tháng sau →</button>
+      </section>
+
+      <section class="calendar-section">
+        <div class="calendar-weekdays">
+          <div>T2</div>
+          <div>T3</div>
+          <div>T4</div>
+          <div>T5</div>
+          <div>T6</div>
+          <div>T7</div>
+          <div>CN</div>
+        </div>
+
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+
+      <section class="selected-date-section">
+        <h2 id="selected-date-title">Chi tiêu ngày hôm nay</h2>
+
+        <div class="form-grid">
+          <div class="form-card">
+            <h3>Thêm tiền vào</h3>
+
+            <label>Số tiền</label>
+            <input type="number" id="income-amount" placeholder="Ví dụ: 10000000" />
+
+            <label>Nội dung</label>
+            <input type="text" id="income-note" placeholder="Ví dụ: Lương tháng này" />
+
+            <button onclick="addIncome()">Lưu tiền vào</button>
+          </div>
+
+          <div class="form-card">
+            <h3>Thêm tiền ra</h3>
+
+            <label>Số tiền</label>
+            <input type="number" id="expense-amount" placeholder="Ví dụ: 50000" />
+
+            <label>Mục chi tiêu</label>
+            <input type="text" id="expense-note" placeholder="Ví dụ: Ăn uống, cà phê, xăng xe..." />
+
+            <button onclick="addExpense()">Lưu tiền ra</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <h2>Bảng thu chi trong ngày</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Tiền vào</th>
+              <th>Tiền ra</th>
+            </tr>
+          </thead>
+
+          <tbody id="daily-table-body"></tbody>
+
+          <tfoot>
+            <tr>
+              <td colspan="2" id="daily-balance">Số dư còn lại: 0đ</td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+
+      <section class="table-section">
+        <h2>Tổng tháng này</h2>
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <p>Tổng tiền vào</p>
+            <h3 id="month-income">0đ</h3>
+          </div>
+
+          <div class="summary-card">
+            <p>Tổng tiền ra</p>
+            <h3 id="month-expense">0đ</h3>
+          </div>
+
+          <div class="summary-card">
+            <p>Còn lại</p>
+            <h3 id="month-balance">0đ</h3>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- SHARED EXPENSE PAGE -->
+    <main id="shared-page" class="content hidden">
+      <section class="form-card shared-form">
+        <h2>Chi tiêu chung của Gấu Cá</h2>
+        <p>Khi nhập chi tiêu chung, hệ thống sẽ tự chia đôi cho Cá và Gấu.</p>
+
+        <label>Ngày chi</label>
+        <input type="date" id="shared-date" />
+
+        <label>Tổng số tiền</label>
+        <input type="number" id="shared-amount" placeholder="Ví dụ: 300000" />
+
+        <label>Nội dung chi tiêu</label>
+        <input type="text" id="shared-note" placeholder="Ví dụ: Ăn tối, đi siêu thị..." />
+
+        <button onclick="addSharedExpense()">Lưu chi tiêu chung</button>
+      </section>
+
+      <section class="table-section">
+        <h2>Lịch sử chi tiêu chung</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>Nội dung</th>
+              <th>Tổng tiền</th>
+              <th>Cá chịu</th>
+              <th>Gấu chịu</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+
+          <tbody id="shared-table-body"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <!-- SUMMARY PAGE -->
+    <main id="summary-page" class="content hidden">
+      <section class="summary-grid">
+        <div class="summary-card">
+          <h2>Cá</h2>
+          <p>Tổng tiền vào</p>
+          <h3 id="ca-total-income">0đ</h3>
+
+          <p>Tổng tiền ra</p>
+          <h3 id="ca-total-expense">0đ</h3>
+
+          <p>Còn lại</p>
+          <h3 id="ca-total-balance">0đ</h3>
+        </div>
+
+        <div class="summary-card">
+          <h2>Gấu</h2>
+          <p>Tổng tiền vào</p>
+          <h3 id="gau-total-income">0đ</h3>
+
+          <p>Tổng tiền ra</p>
+          <h3 id="gau-total-expense">0đ</h3>
+
+          <p>Còn lại</p>
+          <h3 id="gau-total-balance">0đ</h3>
+        </div>
+
+        <div class="summary-card total-card">
+          <h2>Tổng gia đình Gấu Cá</h2>
+          <p>Tổng tiền vào</p>
+          <h3 id="both-total-income">0đ</h3>
+
+          <p>Tổng tiền ra</p>
+          <h3 id="both-total-expense">0đ</h3>
+
+          <p>Còn lại</p>
+          <h3 id="both-total-balance">0đ</h3>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <h2>Toàn bộ giao dịch</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Người</th>
+              <th>Ngày</th>
+              <th>Loại</th>
+              <th>Nội dung</th>
+              <th>Số tiền</th>
+            </tr>
+          </thead>
+
+          <tbody id="all-transaction-body"></tbody>
+        </table>
+      </section>
+    </main>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>

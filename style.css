@@ -1,0 +1,355 @@
+* {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #fff8ef;
+  color: #2d2d2d;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.page {
+  min-height: 100vh;
+}
+
+/* LOGIN */
+
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #ffe0a3, #fff8ef);
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  padding: 32px;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+
+.login-card h1 {
+  margin-bottom: 12px;
+  color: #7a4a00;
+}
+
+.login-card p {
+  font-size: 18px;
+}
+
+.login-card input {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 14px;
+  background: #ff9f1c;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #e88b00;
+}
+
+.login-card button {
+  width: 100%;
+  margin-top: 18px;
+  font-size: 16px;
+}
+
+.error-message {
+  color: #d63031;
+  font-weight: bold;
+}
+
+/* HEADER */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 32px;
+  background: #ffcf70;
+  flex-wrap: wrap;
+}
+
+.app-header h1 {
+  margin: 0 0 6px;
+}
+
+.app-header p {
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.logout-btn {
+  background: #d63031;
+}
+
+.logout-btn:hover {
+  background: #b71c1c;
+}
+
+/* CONTENT */
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.month-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  padding: 18px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+.month-control h2 {
+  margin: 0;
+  text-align: center;
+}
+
+/* CALENDAR */
+
+.calendar-section {
+  background: white;
+  padding: 20px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.calendar-weekdays div {
+  text-align: center;
+  font-weight: bold;
+  padding: 8px;
+  color: #7a4a00;
+}
+
+.calendar-day {
+  min-height: 84px;
+  padding: 8px;
+  border-radius: 14px;
+  background: #f7f7f7;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.calendar-day:hover {
+  background: #fff2cf;
+}
+
+.calendar-day.selected {
+  border-color: #ff9f1c;
+  background: #fff2cf;
+}
+
+.calendar-day.empty {
+  background: transparent;
+  cursor: default;
+}
+
+.day-number {
+  font-weight: bold;
+}
+
+.day-summary {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.day-income {
+  color: #1f8f4d;
+}
+
+.day-expense {
+  color: #d63031;
+}
+
+/* FORMS */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.form-card,
+.table-section,
+.selected-date-section,
+.summary-card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+.form-card h3,
+.form-card h2 {
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+}
+
+.form-card button {
+  width: 100%;
+  margin-top: 18px;
+}
+
+/* TABLE */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+th,
+td {
+  padding: 14px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+th {
+  background: #fff2cf;
+  text-align: left;
+}
+
+tfoot td {
+  font-weight: bold;
+  background: #f8f8f8;
+}
+
+.transaction-item {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8f8f8;
+}
+
+.transaction-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.transaction-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.transaction-actions button {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.edit-btn {
+  background: #0984e3;
+}
+
+.delete-btn {
+  background: #d63031;
+}
+
+/* SUMMARY */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.summary-card h2 {
+  margin-top: 0;
+}
+
+.summary-card h3 {
+  margin-top: 4px;
+  color: #1f7a4d;
+}
+
+.total-card {
+  background: #fff2cf;
+}
+
+/* SHARED */
+
+.shared-form {
+  max-width: 600px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .form-grid,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-day {
+    min-height: 64px;
+    font-size: 13px;
+  }
+
+  .day-summary {
+    display: none;
+  }
+
+  .month-control {
+    flex-direction: column;
+  }
+}
