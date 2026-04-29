@@ -16,10 +16,10 @@
       <h1>Chào mừng đến với gia đình Gấu Cá</h1>
       <p>Papa hay Mama đây ạ.?</p>
 
-      <input 
-        type="password" 
-        id="password-input" 
-        placeholder="Nhập password yêu thương..." 
+      <input
+        type="password"
+        id="password-input"
+        placeholder="Nhập password yêu thương..."
       />
 
       <button onclick="login()">Vào thôi!</button>
@@ -37,11 +37,11 @@
       </div>
 
       <div class="header-actions">
-  <button id="personal-nav-btn" onclick="goBackToPersonalPage()">Trang của mình</button>
-  <button onclick="showSharedPage()">Chi tiêu chung</button>
-  <button onclick="showSummaryPage()">Tổng 2 đứa</button>
-  <button class="logout-btn" onclick="logout()">Đăng xuất</button>
-</div>
+        <button id="personal-nav-btn" onclick="goBackToPersonalPage()">Trang của mình</button>
+        <button onclick="showSharedPage()">Chi tiêu chung</button>
+        <button onclick="showSummaryPage()">Tổng 2 đứa</button>
+        <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+      </div>
     </header>
 
     <!-- PERSONAL PAGE: CÁ / GẤU -->
@@ -76,10 +76,19 @@
             <h3>Thêm tiền vào</h3>
 
             <label>Số tiền</label>
-            <input type="text" id="income-amount" placeholder="Ví dụ: 10.000.000" inputmode="numeric" />
+            <input
+              type="text"
+              id="income-amount"
+              placeholder="Ví dụ: 10.000.000"
+              inputmode="numeric"
+            />
 
             <label>Nội dung</label>
-            <input type="text" id="income-note" placeholder="Ví dụ: Lương tháng này" />
+            <input
+              type="text"
+              id="income-note"
+              placeholder="Ví dụ: Lương tháng này"
+            />
 
             <button onclick="addIncome()">Lưu tiền vào</button>
           </div>
@@ -88,14 +97,61 @@
             <h3>Thêm tiền ra</h3>
 
             <label>Số tiền</label>
-            <input type="text" id="expense-amount" placeholder="Ví dụ: 50.000" inputmode="numeric" />
+            <input
+              type="text"
+              id="expense-amount"
+              placeholder="Ví dụ: 50.000"
+              inputmode="numeric"
+            />
 
             <label>Mục chi tiêu</label>
-            <input type="text" id="expense-note" placeholder="Ví dụ: Ăn uống, cà phê, xăng xe..." />
+            <input
+              type="text"
+              id="expense-note"
+              placeholder="Ví dụ: Ăn uống, cà phê, xăng xe..."
+            />
 
             <button onclick="addExpense()">Lưu tiền ra</button>
           </div>
         </div>
+      </section>
+
+      <!-- PERSONAL SEARCH -->
+      <section class="search-section">
+        <h2>Tìm giao dịch</h2>
+
+        <div class="search-grid">
+          <div>
+            <label>Ngày</label>
+            <input type="date" id="personal-search-date" />
+          </div>
+
+          <div>
+            <label>Số tiền</label>
+            <input
+              type="text"
+              id="personal-search-amount"
+              placeholder="Ví dụ: 50.000"
+              inputmode="numeric"
+            />
+          </div>
+
+          <div>
+            <label>Nội dung</label>
+            <input
+              type="text"
+              id="personal-search-note"
+              placeholder="Ví dụ: cà phê, lương, ăn tối..."
+            />
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button onclick="searchPersonalTransactions()">Tìm giao dịch</button>
+          <button onclick="clearPersonalSearch()">Xóa tìm kiếm</button>
+        </div>
+
+        <div id="personal-search-results" class="search-results"></div>
       </section>
 
       <section class="table-section">
@@ -139,6 +195,27 @@
           </div>
         </div>
       </section>
+
+      <!-- PERSONAL STATS -->
+      <section class="stats-section">
+        <h2>Thống kê tháng này</h2>
+
+        <div class="stats-grid">
+          <div class="stats-card">
+            <h3>Nguồn thu trong tháng</h3>
+            <p id="personal-income-max">Nguồn thu nhiều nhất: Chưa có dữ liệu</p>
+            <p id="personal-income-min">Nguồn thu ít nhất: Chưa có dữ liệu</p>
+            <canvas id="personal-income-chart"></canvas>
+          </div>
+
+          <div class="stats-card">
+            <h3>Khoản chi trong tháng</h3>
+            <p id="personal-expense-max">Chi nhiều nhất cho: Chưa có dữ liệu</p>
+            <p id="personal-expense-min">Chi ít nhất cho: Chưa có dữ liệu</p>
+            <canvas id="personal-expense-chart"></canvas>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- SHARED EXPENSE PAGE -->
@@ -151,12 +228,73 @@
         <input type="date" id="shared-date" />
 
         <label>Tổng số tiền</label>
-        <input type="text" id="shared-amount" placeholder="Ví dụ: 300.000" inputmode="numeric" />
+        <input
+          type="text"
+          id="shared-amount"
+          placeholder="Ví dụ: 300.000"
+          inputmode="numeric"
+        />
 
         <label>Nội dung chi tiêu</label>
-        <input type="text" id="shared-note" placeholder="Ví dụ: Ăn tối, đi siêu thị..." />
+        <input
+          type="text"
+          id="shared-note"
+          placeholder="Ví dụ: Ăn tối, đi siêu thị..."
+        />
 
         <button onclick="addSharedExpense()">Lưu chi tiêu chung</button>
+      </section>
+
+      <!-- SHARED SEARCH -->
+      <section class="search-section">
+        <h2>Tìm chi tiêu chung</h2>
+
+        <div class="search-grid">
+          <div>
+            <label>Ngày</label>
+            <input type="date" id="shared-search-date" />
+          </div>
+
+          <div>
+            <label>Số tiền</label>
+            <input
+              type="text"
+              id="shared-search-amount"
+              placeholder="Ví dụ: 300.000"
+              inputmode="numeric"
+            />
+          </div>
+
+          <div>
+            <label>Nội dung</label>
+            <input
+              type="text"
+              id="shared-search-note"
+              placeholder="Ví dụ: ăn tối, siêu thị..."
+            />
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button onclick="searchSharedTransactions()">Tìm giao dịch</button>
+          <button onclick="clearSharedSearch()">Xóa tìm kiếm</button>
+        </div>
+
+        <div id="shared-search-results" class="search-results"></div>
+      </section>
+
+      <!-- SHARED STATS -->
+      <section class="stats-section">
+        <h2>Thống kê chi tiêu chung tháng này</h2>
+
+        <div class="stats-grid one-column">
+          <div class="stats-card">
+            <h3>Khoản chi chung trong tháng</h3>
+            <p id="shared-expense-max">Chi nhiều nhất cho: Chưa có dữ liệu</p>
+            <p id="shared-expense-min">Chi ít nhất cho: Chưa có dữ liệu</p>
+            <canvas id="shared-expense-chart"></canvas>
+          </div>
+        </div>
       </section>
 
       <section class="table-section">
@@ -184,6 +322,7 @@
       <section class="summary-grid">
         <div class="summary-card">
           <h2>Cá</h2>
+
           <p>Tổng tiền vào</p>
           <h3 id="ca-total-income">0đ</h3>
 
@@ -196,6 +335,7 @@
 
         <div class="summary-card">
           <h2>Gấu</h2>
+
           <p>Tổng tiền vào</p>
           <h3 id="gau-total-income">0đ</h3>
 
@@ -208,6 +348,7 @@
 
         <div class="summary-card total-card">
           <h2>Tổng gia đình Gấu Cá</h2>
+
           <p>Tổng tiền vào</p>
           <h3 id="both-total-income">0đ</h3>
 
@@ -216,6 +357,65 @@
 
           <p>Còn lại</p>
           <h3 id="both-total-balance">0đ</h3>
+        </div>
+      </section>
+
+      <!-- SUMMARY SEARCH -->
+      <section class="search-section">
+        <h2>Tìm giao dịch của cả hai</h2>
+
+        <div class="search-grid">
+          <div>
+            <label>Ngày</label>
+            <input type="date" id="summary-search-date" />
+          </div>
+
+          <div>
+            <label>Số tiền</label>
+            <input
+              type="text"
+              id="summary-search-amount"
+              placeholder="Ví dụ: 50.000"
+              inputmode="numeric"
+            />
+          </div>
+
+          <div>
+            <label>Nội dung</label>
+            <input
+              type="text"
+              id="summary-search-note"
+              placeholder="Ví dụ: cà phê, lương, ăn tối..."
+            />
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button onclick="searchSummaryTransactions()">Tìm giao dịch</button>
+          <button onclick="clearSummarySearch()">Xóa tìm kiếm</button>
+        </div>
+
+        <div id="summary-search-results" class="search-results"></div>
+      </section>
+
+      <!-- SUMMARY STATS -->
+      <section class="stats-section">
+        <h2>Thống kê tổng tháng này</h2>
+
+        <div class="stats-grid">
+          <div class="stats-card">
+            <h3>Nguồn thu của cả hai</h3>
+            <p id="summary-income-max">Nguồn thu nhiều nhất: Chưa có dữ liệu</p>
+            <p id="summary-income-min">Nguồn thu ít nhất: Chưa có dữ liệu</p>
+            <canvas id="summary-income-chart"></canvas>
+          </div>
+
+          <div class="stats-card">
+            <h3>Khoản chi của cả hai</h3>
+            <p id="summary-expense-max">Chi nhiều nhất cho: Chưa có dữ liệu</p>
+            <p id="summary-expense-min">Chi ít nhất cho: Chưa có dữ liệu</p>
+            <canvas id="summary-expense-chart"></canvas>
+          </div>
         </div>
       </section>
 
@@ -239,6 +439,10 @@
     </main>
   </section>
 
+  <!-- CHART.JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- MAIN SCRIPT -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
