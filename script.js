@@ -2,7 +2,7 @@
 // FIREBASE IMPORTS
 // =========================
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
 import {
   getFirestore,
@@ -15,7 +15,7 @@ import {
   query,
   orderBy,
   serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 // =========================
 // FIREBASE CONFIG
@@ -54,6 +54,9 @@ let currentUser = null;
 let currentDate = new Date();
 let selectedDate = formatDate(new Date());
 
+let summaryYear = new Date().getFullYear();
+let selectedSummaryMonth = null;
+
 let data = {
   ca: [],
   gau: [],
@@ -65,7 +68,8 @@ let charts = {
   personalExpense: null,
   sharedExpense: null,
   summaryIncome: null,
-  summaryExpense: null
+  summaryExpense: null,
+  summaryYearlyFlow: null
 };
 
 let editingContext = null;
@@ -80,7 +84,6 @@ const sharedCollection = collection(db, "expense_sharedTransactions");
 
 // =========================
 // MAKE FUNCTIONS GLOBAL
-// Vì HTML đang gọi onclick="..."
 // =========================
 
 window.login = login;
@@ -109,6 +112,10 @@ window.clearSummarySearch = clearSummarySearch;
 
 window.closeEditModal = closeEditModal;
 window.saveEditModal = saveEditModal;
+
+window.changeSummaryYear = changeSummaryYear;
+window.applySummaryFilters = applySummaryFilters;
+window.clearSummaryFilters = clearSummaryFilters;
 
 // =========================
 // BASIC HELPERS
@@ -263,6 +270,11 @@ function refreshCurrentView() {
   if (summaryPage && !summaryPage.classList.contains("hidden")) {
     renderSummaryPage();
     renderSummaryStats();
+    renderSummaryYearlyFlowChart();
+
+    if (selectedSummaryMonth !== null) {
+      renderSummaryMonthDetail(selectedSummaryMonth);
+    }
   }
 }
 
@@ -391,6 +403,7 @@ function showSummaryPage() {
 
   renderSummaryPage();
   renderSummaryStats();
+  renderSummaryYearlyFlowChart();
 }
 
 // =========================
@@ -635,7 +648,7 @@ function createTransactionHTML(item, person) {
 }
 
 // =========================
-// EDIT PERSONAL / SHARED TRANSACTIONS
+// EDIT
 // =========================
 
 function editTransaction(person, firestoreId) {
@@ -783,7 +796,7 @@ async function saveEditModal() {
 }
 
 // =========================
-// DELETE TRANSACTIONS
+// DELETE
 // =========================
 
 async function deleteTransaction(person, firestoreId) {
@@ -1103,20 +1116,7 @@ function searchSummaryTransactions() {
     return;
   }
 
-  const allTransactions = [
-    ...data.ca.map(item => ({
-      ...item,
-      person: "Cá",
-      personKey: "ca"
-    })),
-    ...data.gau.map(item => ({
-      ...item,
-      person: "Gấu",
-      personKey: "gau"
-    }))
-  ];
-
-  const results = allTransactions.filter(item => transactionMatchesSearch(item, filters));
+  const results = getAllSummaryTransactions().filter(item => transactionMatchesSearch(item, filters));
 
   renderSearchResults("summary-search-results", results, {
     allowEdit: false
@@ -1298,12 +1298,7 @@ function renderSharedStats() {
 }
 
 function renderSummaryStats() {
-  const allTransactions = [
-    ...data.ca,
-    ...data.gau
-  ];
-
-  const monthItems = getCurrentMonthItems(allTransactions);
+  const monthItems = getCurrentMonthItems([...data.ca, ...data.gau]);
 
   const incomes = monthItems.filter(item => item.type === "income");
   const expenses = monthItems.filter(item => item.type === "expense");
@@ -1332,7 +1327,200 @@ function renderSummaryStats() {
 }
 
 // =========================
-// SUMMARY PAGE
+// SUMMARY YEARLY LINE CHART
+// =========================
+
+function changeSummaryYear(direction) {
+  summaryYear += direction;
+  selectedSummaryMonth = null;
+
+  const detailSection = document.getElementById("summary-month-detail-section");
+  if (detailSection) {
+    detailSection.classList.add("hidden");
+  }
+
+  renderSummaryYearlyFlowChart();
+}
+
+function renderSummaryYearlyFlowChart() {
+  const canvas = document.getElementById("summary-yearly-flow-chart");
+  const yearLabel = document.getElementById("summary-year-label");
+
+  if (!canvas) return;
+
+  if (yearLabel) {
+    yearLabel.textContent = summaryYear;
+  }
+
+  const monthlyIncome = Array(12).fill(0);
+  const monthlyExpense = Array(12).fill(0);
+
+  const allTransactions = [...data.ca, ...data.gau];
+
+  allTransactions.forEach(item => {
+    if (!item.date) return;
+
+    const itemDate = new Date(item.date);
+    const itemYear = itemDate.getFullYear();
+    const itemMonth = itemDate.getMonth();
+
+    if (itemYear !== summaryYear) return;
+
+    if (item.type === "income") {
+      monthlyIncome[itemMonth] += Number(item.amount || 0);
+    }
+
+    if (item.type === "expense") {
+      monthlyExpense[itemMonth] += Number(item.amount || 0);
+    }
+  });
+
+  if (charts.summaryYearlyFlow) {
+    charts.summaryYearlyFlow.destroy();
+    charts.summaryYearlyFlow = null;
+  }
+
+  charts.summaryYearlyFlow = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: [
+        "Tháng 1",
+        "Tháng 2",
+        "Tháng 3",
+        "Tháng 4",
+        "Tháng 5",
+        "Tháng 6",
+        "Tháng 7",
+        "Tháng 8",
+        "Tháng 9",
+        "Tháng 10",
+        "Tháng 11",
+        "Tháng 12"
+      ],
+      datasets: [
+        {
+          label: "Tổng thu",
+          data: monthlyIncome,
+          tension: 0.3
+        },
+        {
+          label: "Tổng chi",
+          data: monthlyExpense,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      onClick: function (event) {
+        const points = charts.summaryYearlyFlow.getElementsAtEventForMode(
+          event,
+          "index",
+          {
+            intersect: false
+          },
+          true
+        );
+
+        if (!points.length) return;
+
+        const monthIndex = points[0].index;
+
+        selectedSummaryMonth = monthIndex;
+        renderSummaryMonthDetail(monthIndex);
+      },
+      plugins: {
+        legend: {
+          position: "bottom"
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label}: ${formatMoney(context.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: function (value) {
+              return Number(value).toLocaleString("vi-VN") + "đ";
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderSummaryMonthDetail(monthIndex) {
+  const section = document.getElementById("summary-month-detail-section");
+  const title = document.getElementById("summary-month-detail-title");
+  const body = document.getElementById("summary-month-detail-body");
+
+  if (!section || !title || !body) return;
+
+  section.classList.remove("hidden");
+
+  title.textContent = `Chi tiết giao dịch tháng ${monthIndex + 1}/${summaryYear}`;
+
+  const monthTransactions = getAllSummaryTransactions()
+    .filter(item => {
+      if (!item.date) return false;
+
+      const itemDate = new Date(item.date);
+
+      return itemDate.getFullYear() === summaryYear && itemDate.getMonth() === monthIndex;
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const income = monthTransactions
+    .filter(item => item.type === "income")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const expense = monthTransactions
+    .filter(item => item.type === "expense")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  document.getElementById("summary-month-income").textContent = formatMoney(income);
+  document.getElementById("summary-month-expense").textContent = formatMoney(expense);
+  document.getElementById("summary-month-balance").textContent = formatMoney(income - expense);
+
+  body.innerHTML = "";
+
+  if (monthTransactions.length === 0) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="5">Tháng này chưa có giao dịch nào.</td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  monthTransactions.forEach(item => {
+    const row = document.createElement("tr");
+    const kindLabel = item.shared ? "Chi chung" : "Chi riêng";
+
+    row.innerHTML = `
+      <td>${item.person}</td>
+      <td>${item.date}</td>
+      <td>${item.type === "income" ? "Tiền vào" : "Tiền ra"} / ${kindLabel}</td>
+      <td>${escapeHTML(item.note)}</td>
+      <td>${formatMoney(item.amount)}</td>
+    `;
+
+    body.appendChild(row);
+  });
+}
+
+// =========================
+// SUMMARY PAGE + FILTERS
 // =========================
 
 function calculatePersonTotal(person) {
@@ -1370,27 +1558,33 @@ function renderSummaryPage() {
   renderAllTransactions();
 }
 
-function renderAllTransactions() {
+function getAllSummaryTransactions() {
+  const allTransactions = [
+    ...data.ca.map(item => ({
+      ...item,
+      person: "Cá",
+      personKey: "ca"
+    })),
+    ...data.gau.map(item => ({
+      ...item,
+      person: "Gấu",
+      personKey: "gau"
+    }))
+  ];
+
+  return allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function renderAllTransactions(customTransactions = null) {
   const tableBody = document.getElementById("all-transaction-body");
 
   if (!tableBody) return;
 
   tableBody.innerHTML = "";
 
-  const allTransactions = [
-    ...data.ca.map(item => ({
-      ...item,
-      person: "Cá"
-    })),
-    ...data.gau.map(item => ({
-      ...item,
-      person: "Gấu"
-    }))
-  ];
+  const allTransactions = customTransactions || getAllSummaryTransactions();
 
-  const sortedTransactions = allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  if (sortedTransactions.length === 0) {
+  if (allTransactions.length === 0) {
     tableBody.innerHTML = `
       <tr>
         <td colspan="5">Chưa có giao dịch nào.</td>
@@ -1400,19 +1594,85 @@ function renderAllTransactions() {
     return;
   }
 
-  sortedTransactions.forEach(item => {
+  allTransactions.forEach(item => {
     const row = document.createElement("tr");
+    const kindLabel = item.shared ? "Chi chung" : "Chi riêng";
 
     row.innerHTML = `
       <td>${item.person}</td>
       <td>${item.date}</td>
-      <td>${item.type === "income" ? "Tiền vào" : "Tiền ra"}</td>
+      <td>${item.type === "income" ? "Tiền vào" : "Tiền ra"} / ${kindLabel}</td>
       <td>${escapeHTML(item.note)}</td>
       <td>${formatMoney(item.amount)}</td>
     `;
 
     tableBody.appendChild(row);
   });
+}
+
+function applySummaryFilters() {
+  const personFilter = document.getElementById("summary-filter-person")?.value || "all";
+  const kindFilter = document.getElementById("summary-filter-kind")?.value || "all";
+  const typeFilter = document.getElementById("summary-filter-type")?.value || "all";
+  const sortMode = document.getElementById("summary-sort-mode")?.value || "newest";
+
+  let transactions = getAllSummaryTransactions();
+
+  if (personFilter !== "all") {
+    transactions = transactions.filter(item => item.personKey === personFilter);
+  }
+
+  if (kindFilter === "shared") {
+    transactions = transactions.filter(item => item.shared === true);
+  }
+
+  if (kindFilter === "personal") {
+    transactions = transactions.filter(item => item.shared !== true);
+  }
+
+  if (typeFilter !== "all") {
+    transactions = transactions.filter(item => item.type === typeFilter);
+  }
+
+  transactions = sortSummaryTransactions(transactions, sortMode);
+
+  renderAllTransactions(transactions);
+}
+
+function clearSummaryFilters() {
+  const personSelect = document.getElementById("summary-filter-person");
+  const kindSelect = document.getElementById("summary-filter-kind");
+  const typeSelect = document.getElementById("summary-filter-type");
+  const sortSelect = document.getElementById("summary-sort-mode");
+
+  if (personSelect) personSelect.value = "all";
+  if (kindSelect) kindSelect.value = "all";
+  if (typeSelect) typeSelect.value = "all";
+  if (sortSelect) sortSelect.value = "newest";
+
+  renderAllTransactions();
+}
+
+function sortSummaryTransactions(transactions, sortMode) {
+  const copied = [...transactions];
+
+  if (sortMode === "newest") {
+    return copied.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+
+  if (sortMode === "oldest") {
+    return copied.sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+
+  if (sortMode === "amount-desc") {
+    return copied.sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
+  }
+
+  if (sortMode === "amount-asc") {
+    return copied.sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0));
+  }
+
+  return copied;
 }
 
 // =========================
