@@ -60,6 +60,16 @@ let data = {
   shared: []
 };
 
+let charts = {
+  personalIncome: null,
+  personalExpense: null,
+  sharedExpense: null,
+  summaryIncome: null,
+  summaryExpense: null
+};
+
+let editingContext = null;
+
 // =========================
 // FIRESTORE COLLECTIONS
 // =========================
@@ -75,16 +85,30 @@ const sharedCollection = collection(db, "expense_sharedTransactions");
 
 window.login = login;
 window.logout = logout;
+
 window.showSharedPage = showSharedPage;
 window.showSummaryPage = showSummaryPage;
 window.goBackToPersonalPage = goBackToPersonalPage;
 window.changeMonth = changeMonth;
+
 window.addIncome = addIncome;
 window.addExpense = addExpense;
 window.addSharedExpense = addSharedExpense;
+
 window.editTransaction = editTransaction;
 window.deleteTransaction = deleteTransaction;
+window.editSharedExpense = editSharedExpense;
 window.deleteSharedExpense = deleteSharedExpense;
+
+window.searchPersonalTransactions = searchPersonalTransactions;
+window.clearPersonalSearch = clearPersonalSearch;
+window.searchSharedTransactions = searchSharedTransactions;
+window.clearSharedSearch = clearSharedSearch;
+window.searchSummaryTransactions = searchSummaryTransactions;
+window.clearSummarySearch = clearSummarySearch;
+
+window.closeEditModal = closeEditModal;
+window.saveEditModal = saveEditModal;
 
 // =========================
 // BASIC HELPERS
@@ -112,7 +136,10 @@ function setupMoneyInputs() {
   const moneyInputIds = [
     "income-amount",
     "expense-amount",
-    "shared-amount"
+    "shared-amount",
+    "personal-search-amount",
+    "shared-search-amount",
+    "summary-search-amount"
   ];
 
   moneyInputIds.forEach(id => {
@@ -163,6 +190,22 @@ function getPersonName(person) {
   return person === "ca" ? "Cá" : "Gấu";
 }
 
+function normalizeText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function escapeHTML(text) {
+  return String(text || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 // =========================
 // REALTIME SYNC
 // =========================
@@ -207,16 +250,19 @@ function refreshCurrentView() {
     renderCalendar();
     renderDailyTable();
     renderMonthSummary();
+    renderPersonalStats();
   }
 
   const sharedPage = document.getElementById("shared-page");
   if (sharedPage && !sharedPage.classList.contains("hidden")) {
     renderSharedTable();
+    renderSharedStats();
   }
 
   const summaryPage = document.getElementById("summary-page");
   if (summaryPage && !summaryPage.classList.contains("hidden")) {
     renderSummaryPage();
+    renderSummaryStats();
   }
 }
 
@@ -316,6 +362,7 @@ function showPersonalPage(person) {
   renderCalendar();
   renderDailyTable();
   renderMonthSummary();
+  renderPersonalStats();
 }
 
 function showSharedPage() {
@@ -330,6 +377,7 @@ function showSharedPage() {
   document.getElementById("shared-date").value = selectedDate;
 
   renderSharedTable();
+  renderSharedStats();
 }
 
 function showSummaryPage() {
@@ -342,6 +390,7 @@ function showSummaryPage() {
   document.getElementById("page-subtitle").textContent = "Xem tổng tiền vào, tiền ra và số dư của cả hai";
 
   renderSummaryPage();
+  renderSummaryStats();
 }
 
 // =========================
@@ -353,6 +402,20 @@ function changeMonth(direction) {
 
   renderCalendar();
   renderMonthSummary();
+
+  if (currentUser === "ca" || currentUser === "gau") {
+    renderPersonalStats();
+  }
+
+  const sharedPage = document.getElementById("shared-page");
+  if (sharedPage && !sharedPage.classList.contains("hidden")) {
+    renderSharedStats();
+  }
+
+  const summaryPage = document.getElementById("summary-page");
+  if (summaryPage && !summaryPage.classList.contains("hidden")) {
+    renderSummaryStats();
+  }
 }
 
 function renderCalendar() {
@@ -410,6 +473,7 @@ function renderCalendar() {
       renderCalendar();
       renderDailyTable();
       renderMonthSummary();
+      renderPersonalStats();
     };
 
     calendarGrid.appendChild(dayCell);
@@ -560,7 +624,7 @@ function renderDailyTable() {
 function createTransactionHTML(item, person) {
   return `
     <div class="transaction-item">
-      <strong>${item.note}</strong>
+      <strong>${escapeHTML(item.note)}</strong>
       <span>${formatMoney(item.amount)}</span>
       <div class="transaction-actions">
         <button class="edit-btn" onclick="editTransaction('${person}', '${item.firestoreId}')">Sửa</button>
@@ -570,43 +634,157 @@ function createTransactionHTML(item, person) {
   `;
 }
 
-async function editTransaction(person, firestoreId) {
+// =========================
+// EDIT PERSONAL / SHARED TRANSACTIONS
+// =========================
+
+function editTransaction(person, firestoreId) {
   const item = data[person].find(transaction => transaction.firestoreId === firestoreId);
 
   if (!item) return;
 
   if (item.shared) {
-    alert("Giao dịch chi tiêu chung nên sửa/xóa ở trang Chi tiêu chung để không lệch dữ liệu của Cá và Gấu.");
+    alert("Giao dịch chi tiêu chung nên sửa ở trang Chi tiêu chung để không lệch dữ liệu của Cá và Gấu.");
     return;
   }
 
-  const newAmountInput = prompt(
-    "Nhập số tiền mới:",
-    formatInputMoney(String(item.amount))
-  );
-
-  if (newAmountInput === null) return;
-
-  const newNote = prompt("Nhập nội dung mới:", item.note);
-
-  if (newNote === null) return;
-
-  const newAmount = parseInputMoney(newAmountInput);
-
-  if (!newAmount || !newNote.trim()) {
-    alert("Thông tin không hợp lệ.");
-    return;
-  }
-
-  const collectionName = getCollectionNameByPerson(person);
-  const personDoc = doc(db, collectionName, firestoreId);
-
-  await updateDoc(personDoc, {
-    amount: newAmount,
-    note: newNote.trim(),
-    updatedAt: serverTimestamp()
+  openEditModal({
+    mode: "personal",
+    person,
+    firestoreId,
+    item
   });
 }
+
+function editSharedExpense(sharedFirestoreId) {
+  const item = data.shared.find(transaction => transaction.firestoreId === sharedFirestoreId);
+
+  if (!item) return;
+
+  openEditModal({
+    mode: "shared",
+    sharedFirestoreId,
+    item
+  });
+}
+
+function openEditModal(context) {
+  editingContext = context;
+
+  const oldModal = document.getElementById("edit-modal-backdrop");
+
+  if (oldModal) {
+    oldModal.remove();
+  }
+
+  const modal = document.createElement("div");
+  modal.id = "edit-modal-backdrop";
+  modal.className = "modal-backdrop";
+
+  const item = context.item;
+
+  modal.innerHTML = `
+    <div class="modal-card">
+      <h2>Sửa giao dịch</h2>
+
+      <label>Ngày</label>
+      <input type="date" id="edit-date" value="${item.date}" />
+
+      <label>Số tiền</label>
+      <input type="text" id="edit-amount" value="${formatInputMoney(String(item.amount))}" inputmode="numeric" />
+
+      <label>Nội dung</label>
+      <input type="text" id="edit-note" value="${escapeHTML(item.note)}" />
+
+      <div class="modal-actions">
+        <button onclick="saveEditModal()">Lưu thay đổi</button>
+        <button class="cancel-btn" onclick="closeEditModal()">Hủy</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const editAmountInput = document.getElementById("edit-amount");
+
+  editAmountInput.addEventListener("input", function () {
+    editAmountInput.value = formatInputMoney(editAmountInput.value);
+  });
+}
+
+function closeEditModal() {
+  editingContext = null;
+
+  const modal = document.getElementById("edit-modal-backdrop");
+
+  if (modal) {
+    modal.remove();
+  }
+}
+
+async function saveEditModal() {
+  if (!editingContext) return;
+
+  const newDate = document.getElementById("edit-date").value;
+  const newAmount = parseInputMoney(document.getElementById("edit-amount").value);
+  const newNote = document.getElementById("edit-note").value.trim();
+
+  if (!newDate || !newAmount || !newNote) {
+    alert("Vui lòng nhập đầy đủ ngày, số tiền và nội dung.");
+    return;
+  }
+
+  if (editingContext.mode === "personal") {
+    const collectionName = getCollectionNameByPerson(editingContext.person);
+    const personDoc = doc(db, collectionName, editingContext.firestoreId);
+
+    await updateDoc(personDoc, {
+      date: newDate,
+      amount: newAmount,
+      note: newNote,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  if (editingContext.mode === "shared") {
+    const sharedDoc = doc(db, "expense_sharedTransactions", editingContext.sharedFirestoreId);
+    const halfAmount = newAmount / 2;
+
+    await updateDoc(sharedDoc, {
+      date: newDate,
+      amount: newAmount,
+      note: newNote,
+      updatedAt: serverTimestamp()
+    });
+
+    const caSharedItems = data.ca.filter(item => item.sharedFirestoreId === editingContext.sharedFirestoreId);
+    const gauSharedItems = data.gau.filter(item => item.sharedFirestoreId === editingContext.sharedFirestoreId);
+
+    for (const item of caSharedItems) {
+      await updateDoc(doc(db, "expense_caTransactions", item.firestoreId), {
+        date: newDate,
+        amount: halfAmount,
+        note: `[Chi chung] ${newNote}`,
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    for (const item of gauSharedItems) {
+      await updateDoc(doc(db, "expense_gauTransactions", item.firestoreId), {
+        date: newDate,
+        amount: halfAmount,
+        note: `[Chi chung] ${newNote}`,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
+  closeEditModal();
+}
+
+// =========================
+// DELETE TRANSACTIONS
+// =========================
 
 async function deleteTransaction(person, firestoreId) {
   const item = data[person].find(transaction => transaction.firestoreId === firestoreId);
@@ -731,11 +909,12 @@ function renderSharedTable() {
 
     row.innerHTML = `
       <td>${item.date}</td>
-      <td>${item.note}</td>
+      <td>${escapeHTML(item.note)}</td>
       <td>${formatMoney(item.amount)}</td>
       <td>${formatMoney(Number(item.amount || 0) / 2)}</td>
       <td>${formatMoney(Number(item.amount || 0) / 2)}</td>
       <td>
+        <button class="edit-btn" onclick="editSharedExpense('${item.firestoreId}')">Sửa</button>
         <button class="delete-btn" onclick="deleteSharedExpense('${item.firestoreId}')">Xóa</button>
       </td>
     `;
@@ -763,6 +942,393 @@ async function deleteSharedExpense(sharedFirestoreId) {
   for (const item of gauSharedItems) {
     await deleteDoc(doc(db, "expense_gauTransactions", item.firestoreId));
   }
+}
+
+// =========================
+// SEARCH
+// =========================
+
+function transactionMatchesSearch(item, filters) {
+  const hasDate = Boolean(filters.date);
+  const hasAmount = Boolean(filters.amount);
+  const hasNote = Boolean(filters.note);
+
+  const dateMatch = !hasDate || item.date === filters.date;
+  const amountMatch = !hasAmount || Number(item.amount || 0) === filters.amount;
+  const noteMatch = !hasNote || normalizeText(item.note).includes(normalizeText(filters.note));
+
+  return dateMatch && amountMatch && noteMatch;
+}
+
+function renderSearchResults(containerId, results, options = {}) {
+  const container = document.getElementById(containerId);
+
+  if (!container) return;
+
+  if (results.length === 0) {
+    container.innerHTML = `<p>Không tìm thấy giao dịch phù hợp.</p>`;
+    return;
+  }
+
+  container.innerHTML = results.map(item => {
+    const typeClass = item.shared ? "shared-result" : item.type === "income" ? "income-result" : "expense-result";
+    const typeLabel = item.type === "income" ? "Tiền vào" : "Tiền ra";
+
+    return `
+      <div class="search-result-item ${typeClass}">
+        ${item.person ? `<strong>Người: ${item.person}</strong><br>` : ""}
+        <strong>${typeLabel}</strong><br>
+        Ngày: ${item.date}<br>
+        Nội dung: ${escapeHTML(item.note)}<br>
+        Số tiền: ${formatMoney(item.amount)}
+        ${
+          options.allowEdit && !item.shared
+            ? `<div class="transaction-actions">
+                <button class="edit-btn" onclick="editTransaction('${item.personKey}', '${item.firestoreId}')">Sửa</button>
+                <button class="delete-btn" onclick="deleteTransaction('${item.personKey}', '${item.firestoreId}')">Xóa</button>
+              </div>`
+            : ""
+        }
+      </div>
+    `;
+  }).join("");
+}
+
+function searchPersonalTransactions() {
+  if (currentUser !== "ca" && currentUser !== "gau") return;
+
+  const filters = {
+    date: document.getElementById("personal-search-date").value,
+    amount: parseInputMoney(document.getElementById("personal-search-amount").value),
+    note: document.getElementById("personal-search-note").value.trim()
+  };
+
+  if (!filters.date && !filters.amount && !filters.note) {
+    alert("Nhập ít nhất 1 thông tin để tìm.");
+    return;
+  }
+
+  const results = data[currentUser]
+    .filter(item => transactionMatchesSearch(item, filters))
+    .map(item => ({
+      ...item,
+      person: getPersonName(currentUser),
+      personKey: currentUser
+    }));
+
+  renderSearchResults("personal-search-results", results, {
+    allowEdit: true
+  });
+}
+
+function clearPersonalSearch() {
+  document.getElementById("personal-search-date").value = "";
+  document.getElementById("personal-search-amount").value = "";
+  document.getElementById("personal-search-note").value = "";
+  document.getElementById("personal-search-results").innerHTML = "";
+}
+
+function searchSharedTransactions() {
+  const filters = {
+    date: document.getElementById("shared-search-date").value,
+    amount: parseInputMoney(document.getElementById("shared-search-amount").value),
+    note: document.getElementById("shared-search-note").value.trim()
+  };
+
+  if (!filters.date && !filters.amount && !filters.note) {
+    alert("Nhập ít nhất 1 thông tin để tìm.");
+    return;
+  }
+
+  const results = data.shared
+    .filter(item => {
+      const dateMatch = !filters.date || item.date === filters.date;
+      const amountMatch = !filters.amount || Number(item.amount || 0) === filters.amount;
+      const noteMatch = !filters.note || normalizeText(item.note).includes(normalizeText(filters.note));
+
+      return dateMatch && amountMatch && noteMatch;
+    })
+    .map(item => ({
+      ...item,
+      type: "expense",
+      shared: true,
+      person: "Chi tiêu chung"
+    }));
+
+  renderSharedSearchResults(results);
+}
+
+function renderSharedSearchResults(results) {
+  const container = document.getElementById("shared-search-results");
+
+  if (!container) return;
+
+  if (results.length === 0) {
+    container.innerHTML = `<p>Không tìm thấy chi tiêu chung phù hợp.</p>`;
+    return;
+  }
+
+  container.innerHTML = results.map(item => `
+    <div class="search-result-item shared-result">
+      <strong>Chi tiêu chung</strong><br>
+      Ngày: ${item.date}<br>
+      Nội dung: ${escapeHTML(item.note)}<br>
+      Tổng tiền: ${formatMoney(item.amount)}<br>
+      Cá chịu: ${formatMoney(Number(item.amount || 0) / 2)}<br>
+      Gấu chịu: ${formatMoney(Number(item.amount || 0) / 2)}
+      <div class="transaction-actions">
+        <button class="edit-btn" onclick="editSharedExpense('${item.firestoreId}')">Sửa</button>
+        <button class="delete-btn" onclick="deleteSharedExpense('${item.firestoreId}')">Xóa</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function clearSharedSearch() {
+  document.getElementById("shared-search-date").value = "";
+  document.getElementById("shared-search-amount").value = "";
+  document.getElementById("shared-search-note").value = "";
+  document.getElementById("shared-search-results").innerHTML = "";
+}
+
+function searchSummaryTransactions() {
+  const filters = {
+    date: document.getElementById("summary-search-date").value,
+    amount: parseInputMoney(document.getElementById("summary-search-amount").value),
+    note: document.getElementById("summary-search-note").value.trim()
+  };
+
+  if (!filters.date && !filters.amount && !filters.note) {
+    alert("Nhập ít nhất 1 thông tin để tìm.");
+    return;
+  }
+
+  const allTransactions = [
+    ...data.ca.map(item => ({
+      ...item,
+      person: "Cá",
+      personKey: "ca"
+    })),
+    ...data.gau.map(item => ({
+      ...item,
+      person: "Gấu",
+      personKey: "gau"
+    }))
+  ];
+
+  const results = allTransactions.filter(item => transactionMatchesSearch(item, filters));
+
+  renderSearchResults("summary-search-results", results, {
+    allowEdit: false
+  });
+}
+
+function clearSummarySearch() {
+  document.getElementById("summary-search-date").value = "";
+  document.getElementById("summary-search-amount").value = "";
+  document.getElementById("summary-search-note").value = "";
+  document.getElementById("summary-search-results").innerHTML = "";
+}
+
+// =========================
+// STATS + PIE CHARTS
+// =========================
+
+function getCurrentMonthItems(items) {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  return items.filter(item => {
+    const itemDate = new Date(item.date);
+
+    return itemDate.getFullYear() === year && itemDate.getMonth() === month;
+  });
+}
+
+function groupByNote(items) {
+  const grouped = {};
+
+  items.forEach(item => {
+    const key = cleanCategoryName(item.note);
+
+    if (!grouped[key]) {
+      grouped[key] = 0;
+    }
+
+    grouped[key] += Number(item.amount || 0);
+  });
+
+  return grouped;
+}
+
+function cleanCategoryName(note) {
+  return String(note || "Không rõ")
+    .replace("[Chi chung]", "")
+    .trim()
+    .toLowerCase();
+}
+
+function getMaxMinFromGrouped(grouped) {
+  const entries = Object.entries(grouped);
+
+  if (entries.length === 0) {
+    return {
+      max: null,
+      min: null
+    };
+  }
+
+  const sorted = entries.sort((a, b) => b[1] - a[1]);
+
+  return {
+    max: sorted[0],
+    min: sorted[sorted.length - 1]
+  };
+}
+
+function updateMaxMinText(maxId, minId, grouped, maxPrefix, minPrefix) {
+  const maxEl = document.getElementById(maxId);
+  const minEl = document.getElementById(minId);
+
+  if (!maxEl || !minEl) return;
+
+  const result = getMaxMinFromGrouped(grouped);
+
+  if (!result.max || !result.min) {
+    maxEl.textContent = `${maxPrefix}: Chưa có dữ liệu`;
+    minEl.textContent = `${minPrefix}: Chưa có dữ liệu`;
+    return;
+  }
+
+  maxEl.textContent = `${maxPrefix}: ${result.max[0]} (${formatMoney(result.max[1])})`;
+  minEl.textContent = `${minPrefix}: ${result.min[0]} (${formatMoney(result.min[1])})`;
+}
+
+function renderPieChart(chartKey, canvasId, grouped, label) {
+  const canvas = document.getElementById(canvasId);
+
+  if (!canvas) return;
+
+  const labels = Object.keys(grouped);
+  const values = Object.values(grouped);
+
+  if (charts[chartKey]) {
+    charts[chartKey].destroy();
+    charts[chartKey] = null;
+  }
+
+  if (labels.length === 0) {
+    return;
+  }
+
+  charts[chartKey] = new Chart(canvas, {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [
+        {
+          label,
+          data: values
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "bottom"
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const value = context.raw;
+              return `${context.label}: ${formatMoney(value)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderPersonalStats() {
+  if (currentUser !== "ca" && currentUser !== "gau") return;
+
+  const monthItems = getCurrentMonthItems(data[currentUser]);
+
+  const incomes = monthItems.filter(item => item.type === "income");
+  const expenses = monthItems.filter(item => item.type === "expense");
+
+  const incomeGrouped = groupByNote(incomes);
+  const expenseGrouped = groupByNote(expenses);
+
+  updateMaxMinText(
+    "personal-income-max",
+    "personal-income-min",
+    incomeGrouped,
+    "Nguồn thu nhiều nhất",
+    "Nguồn thu ít nhất"
+  );
+
+  updateMaxMinText(
+    "personal-expense-max",
+    "personal-expense-min",
+    expenseGrouped,
+    "Chi nhiều nhất cho",
+    "Chi ít nhất cho"
+  );
+
+  renderPieChart("personalIncome", "personal-income-chart", incomeGrouped, "Nguồn thu");
+  renderPieChart("personalExpense", "personal-expense-chart", expenseGrouped, "Khoản chi");
+}
+
+function renderSharedStats() {
+  const monthItems = getCurrentMonthItems(data.shared);
+  const expenseGrouped = groupByNote(monthItems);
+
+  updateMaxMinText(
+    "shared-expense-max",
+    "shared-expense-min",
+    expenseGrouped,
+    "Chi chung nhiều nhất cho",
+    "Chi chung ít nhất cho"
+  );
+
+  renderPieChart("sharedExpense", "shared-expense-chart", expenseGrouped, "Chi tiêu chung");
+}
+
+function renderSummaryStats() {
+  const allTransactions = [
+    ...data.ca,
+    ...data.gau
+  ];
+
+  const monthItems = getCurrentMonthItems(allTransactions);
+
+  const incomes = monthItems.filter(item => item.type === "income");
+  const expenses = monthItems.filter(item => item.type === "expense");
+
+  const incomeGrouped = groupByNote(incomes);
+  const expenseGrouped = groupByNote(expenses);
+
+  updateMaxMinText(
+    "summary-income-max",
+    "summary-income-min",
+    incomeGrouped,
+    "Nguồn thu nhiều nhất",
+    "Nguồn thu ít nhất"
+  );
+
+  updateMaxMinText(
+    "summary-expense-max",
+    "summary-expense-min",
+    expenseGrouped,
+    "Chi nhiều nhất cho",
+    "Chi ít nhất cho"
+  );
+
+  renderPieChart("summaryIncome", "summary-income-chart", incomeGrouped, "Nguồn thu cả hai");
+  renderPieChart("summaryExpense", "summary-expense-chart", expenseGrouped, "Khoản chi cả hai");
 }
 
 // =========================
@@ -841,7 +1407,7 @@ function renderAllTransactions() {
       <td>${item.person}</td>
       <td>${item.date}</td>
       <td>${item.type === "income" ? "Tiền vào" : "Tiền ra"}</td>
-      <td>${item.note}</td>
+      <td>${escapeHTML(item.note)}</td>
       <td>${formatMoney(item.amount)}</td>
     `;
 
