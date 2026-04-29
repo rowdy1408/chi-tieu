@@ -460,15 +460,6 @@ tfoot td {
   max-height: 420px;
 }
 
-/* FILTERS */
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-bottom: 16px;
-}
-
 /* MODAL */
 
 .modal-backdrop {
@@ -512,8 +503,7 @@ tfoot td {
   .summary-grid,
   .search-grid,
   .stats-grid,
-  .stats-grid.one-column,
-  .filter-grid {
+  .stats-grid.one-column {
     grid-template-columns: 1fr;
   }
 
