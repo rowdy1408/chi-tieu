@@ -1,8 +1,52 @@
+// =========================
+// FIREBASE IMPORTS
+// =========================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+// =========================
+// FIREBASE CONFIG
+// =========================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDbHjWFLWVNyC20u0qEO_r2gtneBmZyQsW",
+  authDomain: "quanlylophoc-5b945.firebaseapp.com",
+  databaseURL: "https://quanlylophoc-5b945-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "quanlylophoc-5b945",
+  storageBucket: "quanlylophoc-5b945.firebasestorage.app",
+  messagingSenderId: "38123679904",
+  appId: "1:38123679904:web:2350b1078fc0542543d9c5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// =========================
+// PASSWORDS
+// =========================
+
 const PASSWORDS = {
   gau: "25121998",
   ca: "16092004",
   summary: "Gauvaca"
 };
+
+// =========================
+// APP STATE
+// =========================
 
 let loggedInUser = null;
 let currentUser = null;
@@ -10,26 +54,48 @@ let currentUser = null;
 let currentDate = new Date();
 let selectedDate = formatDate(new Date());
 
-let data = JSON.parse(localStorage.getItem("gauCaExpenseData")) || {
+let data = {
   ca: [],
   gau: [],
   shared: []
 };
 
-/* =========================
-   BASIC HELPERS
-========================= */
+// =========================
+// FIRESTORE COLLECTIONS
+// =========================
 
-function saveData() {
-  localStorage.setItem("gauCaExpenseData", JSON.stringify(data));
-}
+const caCollection = collection(db, "expense_caTransactions");
+const gauCollection = collection(db, "expense_gauTransactions");
+const sharedCollection = collection(db, "expense_sharedTransactions");
+
+// =========================
+// MAKE FUNCTIONS GLOBAL
+// Vì HTML đang gọi onclick="..."
+// =========================
+
+window.login = login;
+window.logout = logout;
+window.showSharedPage = showSharedPage;
+window.showSummaryPage = showSummaryPage;
+window.goBackToPersonalPage = goBackToPersonalPage;
+window.changeMonth = changeMonth;
+window.addIncome = addIncome;
+window.addExpense = addExpense;
+window.addSharedExpense = addSharedExpense;
+window.editTransaction = editTransaction;
+window.deleteTransaction = deleteTransaction;
+window.deleteSharedExpense = deleteSharedExpense;
+
+// =========================
+// BASIC HELPERS
+// =========================
 
 function formatMoney(amount) {
-  return Number(amount).toLocaleString("vi-VN") + "đ";
+  return Number(amount || 0).toLocaleString("vi-VN") + "đ";
 }
 
 function formatInputMoney(value) {
-  const numbersOnly = value.replace(/\D/g, "");
+  const numbersOnly = String(value || "").replace(/\D/g, "");
 
   if (!numbersOnly) return "";
 
@@ -39,7 +105,7 @@ function formatInputMoney(value) {
 function parseInputMoney(value) {
   if (!value) return 0;
 
-  return Number(value.replace(/\./g, ""));
+  return Number(String(value).replace(/\./g, ""));
 }
 
 function setupMoneyInputs() {
@@ -79,9 +145,84 @@ function getVietnameseDate(dateString) {
   });
 }
 
-/* =========================
-   LOGIN
-========================= */
+function getCollectionByPerson(person) {
+  if (person === "ca") return caCollection;
+  if (person === "gau") return gauCollection;
+
+  return null;
+}
+
+function getCollectionNameByPerson(person) {
+  if (person === "ca") return "expense_caTransactions";
+  if (person === "gau") return "expense_gauTransactions";
+
+  return null;
+}
+
+function getPersonName(person) {
+  return person === "ca" ? "Cá" : "Gấu";
+}
+
+// =========================
+// REALTIME SYNC
+// =========================
+
+function startRealtimeSync() {
+  const caQuery = query(caCollection, orderBy("date", "desc"));
+  const gauQuery = query(gauCollection, orderBy("date", "desc"));
+  const sharedQuery = query(sharedCollection, orderBy("date", "desc"));
+
+  onSnapshot(caQuery, snapshot => {
+    data.ca = snapshot.docs.map(docItem => ({
+      firestoreId: docItem.id,
+      ...docItem.data()
+    }));
+
+    refreshCurrentView();
+  });
+
+  onSnapshot(gauQuery, snapshot => {
+    data.gau = snapshot.docs.map(docItem => ({
+      firestoreId: docItem.id,
+      ...docItem.data()
+    }));
+
+    refreshCurrentView();
+  });
+
+  onSnapshot(sharedQuery, snapshot => {
+    data.shared = snapshot.docs.map(docItem => ({
+      firestoreId: docItem.id,
+      ...docItem.data()
+    }));
+
+    refreshCurrentView();
+  });
+}
+
+function refreshCurrentView() {
+  if (!loggedInUser) return;
+
+  if (currentUser === "ca" || currentUser === "gau") {
+    renderCalendar();
+    renderDailyTable();
+    renderMonthSummary();
+  }
+
+  const sharedPage = document.getElementById("shared-page");
+  if (sharedPage && !sharedPage.classList.contains("hidden")) {
+    renderSharedTable();
+  }
+
+  const summaryPage = document.getElementById("summary-page");
+  if (summaryPage && !summaryPage.classList.contains("hidden")) {
+    renderSummaryPage();
+  }
+}
+
+// =========================
+// LOGIN
+// =========================
 
 function login() {
   const password = document.getElementById("password-input").value.trim();
@@ -123,9 +264,9 @@ function showApp() {
   document.getElementById("app-page").classList.remove("hidden");
 }
 
-/* =========================
-   PAGE ROUTING
-========================= */
+// =========================
+// PAGE ROUTING
+// =========================
 
 function hideAllMainPages() {
   document.getElementById("personal-page").classList.add("hidden");
@@ -167,7 +308,7 @@ function showPersonalPage(person) {
 
   document.getElementById("personal-page").classList.remove("hidden");
 
-  const personName = person === "ca" ? "Cá" : "Gấu";
+  const personName = getPersonName(person);
 
   document.getElementById("page-title").textContent = `Trang chi tiêu của ${personName}`;
   document.getElementById("page-subtitle").textContent = `Nhập tiền vào, tiền ra và xem số dư của ${personName}`;
@@ -203,9 +344,9 @@ function showSummaryPage() {
   renderSummaryPage();
 }
 
-/* =========================
-   CALENDAR
-========================= */
+// =========================
+// CALENDAR
+// =========================
 
 function changeMonth(direction) {
   currentDate.setMonth(currentDate.getMonth() + direction);
@@ -287,11 +428,11 @@ function getDailySummary(person, dateString) {
 
   const income = dailyItems
     .filter(item => item.type === "income")
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const expense = dailyItems
     .filter(item => item.type === "expense")
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   return {
     income,
@@ -299,11 +440,13 @@ function getDailySummary(person, dateString) {
   };
 }
 
-/* =========================
-   ADD PERSONAL INCOME / EXPENSE
-========================= */
+// =========================
+// ADD PERSONAL INCOME / EXPENSE
+// =========================
 
-function addIncome() {
+async function addIncome() {
+  if (currentUser !== "ca" && currentUser !== "gau") return;
+
   const amount = parseInputMoney(document.getElementById("income-amount").value);
   const note = document.getElementById("income-note").value.trim();
 
@@ -312,26 +455,25 @@ function addIncome() {
     return;
   }
 
-  data[currentUser].push({
-    id: Date.now(),
+  const personCollection = getCollectionByPerson(currentUser);
+
+  await addDoc(personCollection, {
     type: "income",
     amount,
     note,
     date: selectedDate,
-    shared: false
+    shared: false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
-
-  saveData();
 
   document.getElementById("income-amount").value = "";
   document.getElementById("income-note").value = "";
-
-  renderCalendar();
-  renderDailyTable();
-  renderMonthSummary();
 }
 
-function addExpense() {
+async function addExpense() {
+  if (currentUser !== "ca" && currentUser !== "gau") return;
+
   const amount = parseInputMoney(document.getElementById("expense-amount").value);
   const note = document.getElementById("expense-note").value.trim();
 
@@ -340,28 +482,25 @@ function addExpense() {
     return;
   }
 
-  data[currentUser].push({
-    id: Date.now(),
+  const personCollection = getCollectionByPerson(currentUser);
+
+  await addDoc(personCollection, {
     type: "expense",
     amount,
     note,
     date: selectedDate,
-    shared: false
+    shared: false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
-
-  saveData();
 
   document.getElementById("expense-amount").value = "";
   document.getElementById("expense-note").value = "";
-
-  renderCalendar();
-  renderDailyTable();
-  renderMonthSummary();
 }
 
-/* =========================
-   DAILY TABLE
-========================= */
+// =========================
+// DAILY TABLE
+// =========================
 
 function renderDailyTable() {
   if (!currentUser || currentUser === "summary") return;
@@ -411,8 +550,8 @@ function renderDailyTable() {
     `;
   }
 
-  const incomeTotal = incomes.reduce((sum, item) => sum + item.amount, 0);
-  const expenseTotal = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const incomeTotal = incomes.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const expenseTotal = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const balance = incomeTotal - expenseTotal;
 
   balanceCell.textContent = `Số dư còn lại trong ngày: ${formatMoney(balance)}`;
@@ -424,17 +563,22 @@ function createTransactionHTML(item, person) {
       <strong>${item.note}</strong>
       <span>${formatMoney(item.amount)}</span>
       <div class="transaction-actions">
-        <button class="edit-btn" onclick="editTransaction('${person}', ${item.id})">Sửa</button>
-        <button class="delete-btn" onclick="deleteTransaction('${person}', ${item.id})">Xóa</button>
+        <button class="edit-btn" onclick="editTransaction('${person}', '${item.firestoreId}')">Sửa</button>
+        <button class="delete-btn" onclick="deleteTransaction('${person}', '${item.firestoreId}')">Xóa</button>
       </div>
     </div>
   `;
 }
 
-function editTransaction(person, id) {
-  const item = data[person].find(transaction => transaction.id === id);
+async function editTransaction(person, firestoreId) {
+  const item = data[person].find(transaction => transaction.firestoreId === firestoreId);
 
   if (!item) return;
+
+  if (item.shared) {
+    alert("Giao dịch chi tiêu chung nên sửa/xóa ở trang Chi tiêu chung để không lệch dữ liệu của Cá và Gấu.");
+    return;
+  }
 
   const newAmountInput = prompt(
     "Nhập số tiền mới:",
@@ -454,41 +598,39 @@ function editTransaction(person, id) {
     return;
   }
 
-  item.amount = newAmount;
-  item.note = newNote.trim();
+  const collectionName = getCollectionNameByPerson(person);
+  const personDoc = doc(db, collectionName, firestoreId);
 
-  saveData();
-
-  renderCalendar();
-  renderDailyTable();
-  renderMonthSummary();
-
-  if (document.getElementById("summary-page") && !document.getElementById("summary-page").classList.contains("hidden")) {
-    renderSummaryPage();
-  }
+  await updateDoc(personDoc, {
+    amount: newAmount,
+    note: newNote.trim(),
+    updatedAt: serverTimestamp()
+  });
 }
 
-function deleteTransaction(person, id) {
+async function deleteTransaction(person, firestoreId) {
+  const item = data[person].find(transaction => transaction.firestoreId === firestoreId);
+
+  if (!item) return;
+
+  if (item.shared) {
+    alert("Giao dịch chi tiêu chung nên xóa ở trang Chi tiêu chung để không lệch dữ liệu của Cá và Gấu.");
+    return;
+  }
+
   const confirmDelete = confirm("Bạn có chắc muốn xóa giao dịch này không?");
 
   if (!confirmDelete) return;
 
-  data[person] = data[person].filter(item => item.id !== id);
+  const collectionName = getCollectionNameByPerson(person);
+  const personDoc = doc(db, collectionName, firestoreId);
 
-  saveData();
-
-  renderCalendar();
-  renderDailyTable();
-  renderMonthSummary();
-
-  if (document.getElementById("summary-page") && !document.getElementById("summary-page").classList.contains("hidden")) {
-    renderSummaryPage();
-  }
+  await deleteDoc(personDoc);
 }
 
-/* =========================
-   MONTH SUMMARY
-========================= */
+// =========================
+// MONTH SUMMARY
+// =========================
 
 function renderMonthSummary() {
   if (!currentUser || currentUser === "summary") return;
@@ -504,22 +646,22 @@ function renderMonthSummary() {
 
   const income = monthItems
     .filter(item => item.type === "income")
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const expense = monthItems
     .filter(item => item.type === "expense")
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   document.getElementById("month-income").textContent = formatMoney(income);
   document.getElementById("month-expense").textContent = formatMoney(expense);
   document.getElementById("month-balance").textContent = formatMoney(income - expense);
 }
 
-/* =========================
-   SHARED EXPENSE
-========================= */
+// =========================
+// SHARED EXPENSE
+// =========================
 
-function addSharedExpense() {
+async function addSharedExpense() {
   const date = document.getElementById("shared-date").value;
   const amount = parseInputMoney(document.getElementById("shared-amount").value);
   const note = document.getElementById("shared-note").value.trim();
@@ -529,48 +671,40 @@ function addSharedExpense() {
     return;
   }
 
-  const sharedId = Date.now();
   const halfAmount = amount / 2;
 
-  data.shared.push({
-    id: sharedId,
+  const sharedDocRef = await addDoc(sharedCollection, {
     date,
     amount,
-    note
+    note,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
 
-  data.ca.push({
-    id: sharedId + 1,
-    sharedId,
+  await addDoc(caCollection, {
+    sharedFirestoreId: sharedDocRef.id,
     type: "expense",
     amount: halfAmount,
     note: `[Chi chung] ${note}`,
     date,
-    shared: true
+    shared: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
 
-  data.gau.push({
-    id: sharedId + 2,
-    sharedId,
+  await addDoc(gauCollection, {
+    sharedFirestoreId: sharedDocRef.id,
     type: "expense",
     amount: halfAmount,
     note: `[Chi chung] ${note}`,
     date,
-    shared: true
+    shared: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
-
-  saveData();
 
   document.getElementById("shared-amount").value = "";
   document.getElementById("shared-note").value = "";
-
-  renderSharedTable();
-
-  if (currentUser === "ca" || currentUser === "gau") {
-    renderCalendar();
-    renderDailyTable();
-    renderMonthSummary();
-  }
 }
 
 function renderSharedTable() {
@@ -599,10 +733,10 @@ function renderSharedTable() {
       <td>${item.date}</td>
       <td>${item.note}</td>
       <td>${formatMoney(item.amount)}</td>
-      <td>${formatMoney(item.amount / 2)}</td>
-      <td>${formatMoney(item.amount / 2)}</td>
+      <td>${formatMoney(Number(item.amount || 0) / 2)}</td>
+      <td>${formatMoney(Number(item.amount || 0) / 2)}</td>
       <td>
-        <button class="delete-btn" onclick="deleteSharedExpense(${item.id})">Xóa</button>
+        <button class="delete-btn" onclick="deleteSharedExpense('${item.firestoreId}')">Xóa</button>
       </td>
     `;
 
@@ -610,42 +744,39 @@ function renderSharedTable() {
   });
 }
 
-function deleteSharedExpense(sharedId) {
+async function deleteSharedExpense(sharedFirestoreId) {
   const confirmDelete = confirm("Bạn có chắc muốn xóa chi tiêu chung này không?");
 
   if (!confirmDelete) return;
 
-  data.shared = data.shared.filter(item => item.id !== sharedId);
-  data.ca = data.ca.filter(item => item.sharedId !== sharedId);
-  data.gau = data.gau.filter(item => item.sharedId !== sharedId);
+  const sharedDoc = doc(db, "expense_sharedTransactions", sharedFirestoreId);
 
-  saveData();
+  const caSharedItems = data.ca.filter(item => item.sharedFirestoreId === sharedFirestoreId);
+  const gauSharedItems = data.gau.filter(item => item.sharedFirestoreId === sharedFirestoreId);
 
-  renderSharedTable();
+  await deleteDoc(sharedDoc);
 
-  if (document.getElementById("summary-page") && !document.getElementById("summary-page").classList.contains("hidden")) {
-    renderSummaryPage();
+  for (const item of caSharedItems) {
+    await deleteDoc(doc(db, "expense_caTransactions", item.firestoreId));
   }
 
-  if (currentUser === "ca" || currentUser === "gau") {
-    renderCalendar();
-    renderDailyTable();
-    renderMonthSummary();
+  for (const item of gauSharedItems) {
+    await deleteDoc(doc(db, "expense_gauTransactions", item.firestoreId));
   }
 }
 
-/* =========================
-   SUMMARY PAGE
-========================= */
+// =========================
+// SUMMARY PAGE
+// =========================
 
 function calculatePersonTotal(person) {
   const income = data[person]
     .filter(item => item.type === "income")
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const expense = data[person]
     .filter(item => item.type === "expense")
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   return {
     income,
@@ -718,8 +849,9 @@ function renderAllTransactions() {
   });
 }
 
-/* =========================
-   INITIAL SETUP
-========================= */
+// =========================
+// INITIAL SETUP
+// =========================
 
 setupMoneyInputs();
+startRealtimeSync();
