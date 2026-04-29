@@ -44,13 +44,11 @@
       </div>
     </header>
 
-    <!-- PERSONAL PAGE: CÁ / GẤU -->
+    <!-- PERSONAL PAGE -->
     <main id="personal-page" class="content hidden">
       <section class="month-control">
         <button onclick="changeMonth(-1)">← Tháng trước</button>
-
         <h2 id="current-month-label"></h2>
-
         <button onclick="changeMonth(1)">Tháng sau →</button>
       </section>
 
@@ -116,7 +114,6 @@
         </div>
       </section>
 
-      <!-- PERSONAL SEARCH -->
       <section class="search-section">
         <h2>Tìm giao dịch</h2>
 
@@ -196,7 +193,6 @@
         </div>
       </section>
 
-      <!-- PERSONAL STATS -->
       <section class="stats-section">
         <h2>Thống kê tháng này</h2>
 
@@ -245,7 +241,6 @@
         <button onclick="addSharedExpense()">Lưu chi tiêu chung</button>
       </section>
 
-      <!-- SHARED SEARCH -->
       <section class="search-section">
         <h2>Tìm chi tiêu chung</h2>
 
@@ -283,7 +278,6 @@
         <div id="shared-search-results" class="search-results"></div>
       </section>
 
-      <!-- SHARED STATS -->
       <section class="stats-section">
         <h2>Thống kê chi tiêu chung tháng này</h2>
 
@@ -360,7 +354,58 @@
         </div>
       </section>
 
-      <!-- SUMMARY SEARCH -->
+      <section class="stats-section">
+        <div class="year-chart-header">
+          <div>
+            <h2>Biểu đồ thu chi theo năm</h2>
+            <p>Click vào từng tháng trên biểu đồ để xem bảng giao dịch chi tiết của tháng đó.</p>
+          </div>
+
+          <div class="year-actions">
+            <button onclick="changeSummaryYear(-1)">← Năm trước</button>
+            <h3 id="summary-year-label">2026</h3>
+            <button onclick="changeSummaryYear(1)">Năm sau →</button>
+          </div>
+        </div>
+
+        <canvas id="summary-yearly-flow-chart"></canvas>
+      </section>
+
+      <section id="summary-month-detail-section" class="table-section hidden">
+        <h2 id="summary-month-detail-title">Chi tiết giao dịch trong tháng</h2>
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <p>Tổng thu tháng này</p>
+            <h3 id="summary-month-income">0đ</h3>
+          </div>
+
+          <div class="summary-card">
+            <p>Tổng chi tháng này</p>
+            <h3 id="summary-month-expense">0đ</h3>
+          </div>
+
+          <div class="summary-card">
+            <p>Còn lại tháng này</p>
+            <h3 id="summary-month-balance">0đ</h3>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Người</th>
+              <th>Ngày</th>
+              <th>Loại</th>
+              <th>Nội dung</th>
+              <th>Số tiền</th>
+            </tr>
+          </thead>
+
+          <tbody id="summary-month-detail-body"></tbody>
+        </table>
+      </section>
+
       <section class="search-section">
         <h2>Tìm giao dịch của cả hai</h2>
 
@@ -398,7 +443,6 @@
         <div id="summary-search-results" class="search-results"></div>
       </section>
 
-      <!-- SUMMARY STATS -->
       <section class="stats-section">
         <h2>Thống kê tổng tháng này</h2>
 
@@ -422,6 +466,50 @@
       <section class="table-section">
         <h2>Toàn bộ giao dịch</h2>
 
+        <div class="filter-grid">
+          <div>
+            <label>Người</label>
+            <select id="summary-filter-person">
+              <option value="all">Tất cả</option>
+              <option value="ca">Cá</option>
+              <option value="gau">Gấu</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Loại chi</label>
+            <select id="summary-filter-kind">
+              <option value="all">Tất cả</option>
+              <option value="shared">Chi chung</option>
+              <option value="personal">Chi riêng</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Loại giao dịch</label>
+            <select id="summary-filter-type">
+              <option value="all">Tất cả</option>
+              <option value="income">Tiền vào</option>
+              <option value="expense">Tiền ra</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Sắp xếp</label>
+            <select id="summary-sort-mode">
+              <option value="newest">Mới nhất trước</option>
+              <option value="oldest">Cũ nhất trước</option>
+              <option value="amount-desc">Số tiền cao → thấp</option>
+              <option value="amount-asc">Số tiền thấp → cao</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button onclick="applySummaryFilters()">Áp dụng lọc/sort</button>
+          <button onclick="clearSummaryFilters()">Xóa lọc/sort</button>
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -439,10 +527,7 @@
     </main>
   </section>
 
-  <!-- CHART.JS -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- MAIN SCRIPT -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
