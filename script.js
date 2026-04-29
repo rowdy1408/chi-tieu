@@ -114,8 +114,6 @@ window.closeEditModal = closeEditModal;
 window.saveEditModal = saveEditModal;
 
 window.changeSummaryYear = changeSummaryYear;
-window.applySummaryFilters = applySummaryFilters;
-window.clearSummaryFilters = clearSummaryFilters;
 
 // =========================
 // BASIC HELPERS
@@ -213,6 +211,13 @@ function escapeHTML(text) {
     .replaceAll("'", "&#039;");
 }
 
+function getCurrentMonthAndYear() {
+  return {
+    year: currentDate.getFullYear(),
+    month: currentDate.getMonth()
+  };
+}
+
 // =========================
 // REALTIME SYNC
 // =========================
@@ -258,12 +263,14 @@ function refreshCurrentView() {
     renderDailyTable();
     renderMonthSummary();
     renderPersonalStats();
+    renderPersonalYearTable();
   }
 
   const sharedPage = document.getElementById("shared-page");
   if (sharedPage && !sharedPage.classList.contains("hidden")) {
     renderSharedTable();
     renderSharedStats();
+    renderSharedYearTable();
   }
 
   const summaryPage = document.getElementById("summary-page");
@@ -273,7 +280,7 @@ function refreshCurrentView() {
     renderSummaryYearlyFlowChart();
 
     if (selectedSummaryMonth !== null) {
-      renderSummaryMonthDetail(selectedSummaryMonth);
+      renderSummaryMonthOverview(selectedSummaryMonth);
     }
   }
 }
@@ -375,6 +382,7 @@ function showPersonalPage(person) {
   renderDailyTable();
   renderMonthSummary();
   renderPersonalStats();
+  renderPersonalYearTable();
 }
 
 function showSharedPage() {
@@ -390,6 +398,7 @@ function showSharedPage() {
 
   renderSharedTable();
   renderSharedStats();
+  renderSharedYearTable();
 }
 
 function showSummaryPage() {
@@ -404,6 +413,10 @@ function showSummaryPage() {
   renderSummaryPage();
   renderSummaryStats();
   renderSummaryYearlyFlowChart();
+
+  if (selectedSummaryMonth !== null) {
+    renderSummaryMonthOverview(selectedSummaryMonth);
+  }
 }
 
 // =========================
@@ -418,11 +431,13 @@ function changeMonth(direction) {
 
   if (currentUser === "ca" || currentUser === "gau") {
     renderPersonalStats();
+    renderPersonalYearTable();
   }
 
   const sharedPage = document.getElementById("shared-page");
   if (sharedPage && !sharedPage.classList.contains("hidden")) {
     renderSharedStats();
+    renderSharedYearTable();
   }
 
   const summaryPage = document.getElementById("summary-page");
@@ -487,6 +502,7 @@ function renderCalendar() {
       renderDailyTable();
       renderMonthSummary();
       renderPersonalStats();
+      renderPersonalYearTable();
     };
 
     calendarGrid.appendChild(dayCell);
@@ -685,7 +701,6 @@ function openEditModal(context) {
   editingContext = context;
 
   const oldModal = document.getElementById("edit-modal-backdrop");
-
   if (oldModal) {
     oldModal.remove();
   }
@@ -719,7 +734,6 @@ function openEditModal(context) {
   document.body.appendChild(modal);
 
   const editAmountInput = document.getElementById("edit-amount");
-
   editAmountInput.addEventListener("input", function () {
     editAmountInput.value = formatInputMoney(editAmountInput.value);
   });
@@ -729,7 +743,6 @@ function closeEditModal() {
   editingContext = null;
 
   const modal = document.getElementById("edit-modal-backdrop");
-
   if (modal) {
     modal.remove();
   }
@@ -810,7 +823,6 @@ async function deleteTransaction(person, firestoreId) {
   }
 
   const confirmDelete = confirm("Bạn có chắc muốn xóa giao dịch này không?");
-
   if (!confirmDelete) return;
 
   const collectionName = getCollectionNameByPerson(person);
@@ -831,7 +843,6 @@ function renderMonthSummary() {
 
   const monthItems = data[currentUser].filter(item => {
     const itemDate = new Date(item.date);
-
     return itemDate.getFullYear() === year && itemDate.getMonth() === month;
   });
 
@@ -846,6 +857,79 @@ function renderMonthSummary() {
   document.getElementById("month-income").textContent = formatMoney(income);
   document.getElementById("month-expense").textContent = formatMoney(expense);
   document.getElementById("month-balance").textContent = formatMoney(income - expense);
+}
+
+// =========================
+// YEAR TABLES
+// =========================
+
+function renderPersonalYearTable() {
+  if (currentUser !== "ca" && currentUser !== "gau") return;
+
+  const tableBody = document.getElementById("personal-year-table-body");
+  const title = document.getElementById("personal-year-title");
+
+  if (!tableBody || !title) return;
+
+  const year = currentDate.getFullYear();
+  title.textContent = `Thống kê năm ${year}`;
+
+  tableBody.innerHTML = "";
+
+  for (let month = 0; month < 12; month++) {
+    const monthItems = data[currentUser].filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate.getFullYear() === year && itemDate.getMonth() === month;
+    });
+
+    const income = monthItems
+      .filter(item => item.type === "income")
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    const expense = monthItems
+      .filter(item => item.type === "expense")
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>Tháng ${month + 1}</td>
+      <td>${formatMoney(income)}</td>
+      <td>${formatMoney(expense)}</td>
+    `;
+
+    tableBody.appendChild(row);
+  }
+}
+
+function renderSharedYearTable() {
+  const tableBody = document.getElementById("shared-year-table-body");
+  const title = document.getElementById("shared-year-title");
+
+  if (!tableBody || !title) return;
+
+  const year = currentDate.getFullYear();
+  title.textContent = `Thống kê năm ${year}`;
+
+  tableBody.innerHTML = "";
+
+  for (let month = 0; month < 12; month++) {
+    const monthItems = data.shared.filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate.getFullYear() === year && itemDate.getMonth() === month;
+    });
+
+    const income = 0;
+    const expense = monthItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>Tháng ${month + 1}</td>
+      <td>${formatMoney(income)}</td>
+      <td>${formatMoney(expense)}</td>
+    `;
+
+    tableBody.appendChild(row);
+  }
 }
 
 // =========================
@@ -911,7 +995,6 @@ function renderSharedTable() {
         <td colspan="6">Chưa có chi tiêu chung nào.</td>
       </tr>
     `;
-
     return;
   }
 
@@ -938,7 +1021,6 @@ function renderSharedTable() {
 
 async function deleteSharedExpense(sharedFirestoreId) {
   const confirmDelete = confirm("Bạn có chắc muốn xóa chi tiêu chung này không?");
-
   if (!confirmDelete) return;
 
   const sharedDoc = doc(db, "expense_sharedTransactions", sharedFirestoreId);
@@ -1104,6 +1186,21 @@ function clearSharedSearch() {
   document.getElementById("shared-search-results").innerHTML = "";
 }
 
+function getAllSummaryTransactions() {
+  return [
+    ...data.ca.map(item => ({
+      ...item,
+      person: "Cá",
+      personKey: "ca"
+    })),
+    ...data.gau.map(item => ({
+      ...item,
+      person: "Gấu",
+      personKey: "gau"
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
 function searchSummaryTransactions() {
   const filters = {
     date: document.getElementById("summary-search-date").value,
@@ -1135,12 +1232,10 @@ function clearSummarySearch() {
 // =========================
 
 function getCurrentMonthItems(items) {
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const { year, month } = getCurrentMonthAndYear();
 
   return items.filter(item => {
     const itemDate = new Date(item.date);
-
     return itemDate.getFullYear() === year && itemDate.getMonth() === month;
   });
 }
@@ -1206,7 +1301,6 @@ function updateMaxMinText(maxId, minId, grouped, maxPrefix, minPrefix) {
 
 function renderPieChart(chartKey, canvasId, grouped, label) {
   const canvas = document.getElementById(canvasId);
-
   if (!canvas) return;
 
   const labels = Object.keys(grouped);
@@ -1327,6 +1421,43 @@ function renderSummaryStats() {
 }
 
 // =========================
+// SUMMARY TOTALS
+// =========================
+
+function calculatePersonTotal(person) {
+  const income = data[person]
+    .filter(item => item.type === "income")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const expense = data[person]
+    .filter(item => item.type === "expense")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  return {
+    income,
+    expense,
+    balance: income - expense
+  };
+}
+
+function renderSummaryPage() {
+  const ca = calculatePersonTotal("ca");
+  const gau = calculatePersonTotal("gau");
+
+  document.getElementById("ca-total-income").textContent = formatMoney(ca.income);
+  document.getElementById("ca-total-expense").textContent = formatMoney(ca.expense);
+  document.getElementById("ca-total-balance").textContent = formatMoney(ca.balance);
+
+  document.getElementById("gau-total-income").textContent = formatMoney(gau.income);
+  document.getElementById("gau-total-expense").textContent = formatMoney(gau.expense);
+  document.getElementById("gau-total-balance").textContent = formatMoney(gau.balance);
+
+  document.getElementById("both-total-income").textContent = formatMoney(ca.income + gau.income);
+  document.getElementById("both-total-expense").textContent = formatMoney(ca.expense + gau.expense);
+  document.getElementById("both-total-balance").textContent = formatMoney(ca.balance + gau.balance);
+}
+
+// =========================
 // SUMMARY YEARLY LINE CHART
 // =========================
 
@@ -1334,9 +1465,9 @@ function changeSummaryYear(direction) {
   summaryYear += direction;
   selectedSummaryMonth = null;
 
-  const detailSection = document.getElementById("summary-month-detail-section");
-  if (detailSection) {
-    detailSection.classList.add("hidden");
+  const overviewSection = document.getElementById("summary-month-overview-section");
+  if (overviewSection) {
+    overviewSection.classList.add("hidden");
   }
 
   renderSummaryYearlyFlowChart();
@@ -1416,22 +1547,12 @@ function renderSummaryYearlyFlowChart() {
         mode: "index",
         intersect: false
       },
-      onClick: function (event) {
-        const points = charts.summaryYearlyFlow.getElementsAtEventForMode(
-          event,
-          "index",
-          {
-            intersect: false
-          },
-          true
-        );
+      onClick: function (event, elements) {
+        if (!elements || !elements.length) return;
 
-        if (!points.length) return;
-
-        const monthIndex = points[0].index;
-
+        const monthIndex = elements[0].index;
         selectedSummaryMonth = monthIndex;
-        renderSummaryMonthDetail(monthIndex);
+        renderSummaryMonthOverview(monthIndex);
       },
       plugins: {
         legend: {
@@ -1458,77 +1579,17 @@ function renderSummaryYearlyFlowChart() {
   });
 }
 
-function renderSummaryMonthDetail(monthIndex) {
-  const section = document.getElementById("summary-month-detail-section");
-  const title = document.getElementById("summary-month-detail-title");
-  const body = document.getElementById("summary-month-detail-body");
-
-  if (!section || !title || !body) return;
-
-  section.classList.remove("hidden");
-
-  title.textContent = `Chi tiết giao dịch tháng ${monthIndex + 1}/${summaryYear}`;
-
-  const monthTransactions = getAllSummaryTransactions()
-    .filter(item => {
-      if (!item.date) return false;
-
-      const itemDate = new Date(item.date);
-
-      return itemDate.getFullYear() === summaryYear && itemDate.getMonth() === monthIndex;
-    })
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  const income = monthTransactions
-    .filter(item => item.type === "income")
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
-
-  const expense = monthTransactions
-    .filter(item => item.type === "expense")
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
-
-  document.getElementById("summary-month-income").textContent = formatMoney(income);
-  document.getElementById("summary-month-expense").textContent = formatMoney(expense);
-  document.getElementById("summary-month-balance").textContent = formatMoney(income - expense);
-
-  body.innerHTML = "";
-
-  if (monthTransactions.length === 0) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="5">Tháng này chưa có giao dịch nào.</td>
-      </tr>
-    `;
-
-    return;
-  }
-
-  monthTransactions.forEach(item => {
-    const row = document.createElement("tr");
-    const kindLabel = item.shared ? "Chi chung" : "Chi riêng";
-
-    row.innerHTML = `
-      <td>${item.person}</td>
-      <td>${item.date}</td>
-      <td>${item.type === "income" ? "Tiền vào" : "Tiền ra"} / ${kindLabel}</td>
-      <td>${escapeHTML(item.note)}</td>
-      <td>${formatMoney(item.amount)}</td>
-    `;
-
-    body.appendChild(row);
+function calculateMonthlyPersonTotals(person, year, monthIndex) {
+  const monthItems = data[person].filter(item => {
+    const itemDate = new Date(item.date);
+    return itemDate.getFullYear() === year && itemDate.getMonth() === monthIndex;
   });
-}
 
-// =========================
-// SUMMARY PAGE + FILTERS
-// =========================
-
-function calculatePersonTotal(person) {
-  const income = data[person]
+  const income = monthItems
     .filter(item => item.type === "income")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-  const expense = data[person]
+  const expense = monthItems
     .filter(item => item.type === "expense")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
@@ -1539,140 +1600,45 @@ function calculatePersonTotal(person) {
   };
 }
 
-function renderSummaryPage() {
-  const ca = calculatePersonTotal("ca");
-  const gau = calculatePersonTotal("gau");
+function renderSummaryMonthOverview(monthIndex) {
+  const section = document.getElementById("summary-month-overview-section");
+  const title = document.getElementById("summary-month-overview-title");
+  const body = document.getElementById("summary-month-overview-body");
 
-  document.getElementById("ca-total-income").textContent = formatMoney(ca.income);
-  document.getElementById("ca-total-expense").textContent = formatMoney(ca.expense);
-  document.getElementById("ca-total-balance").textContent = formatMoney(ca.balance);
+  if (!section || !title || !body) return;
 
-  document.getElementById("gau-total-income").textContent = formatMoney(gau.income);
-  document.getElementById("gau-total-expense").textContent = formatMoney(gau.expense);
-  document.getElementById("gau-total-balance").textContent = formatMoney(gau.balance);
+  section.classList.remove("hidden");
+  title.textContent = `Tổng hợp tháng ${monthIndex + 1}/${summaryYear}`;
 
-  document.getElementById("both-total-income").textContent = formatMoney(ca.income + gau.income);
-  document.getElementById("both-total-expense").textContent = formatMoney(ca.expense + gau.expense);
-  document.getElementById("both-total-balance").textContent = formatMoney(ca.balance + gau.balance);
+  const ca = calculateMonthlyPersonTotals("ca", summaryYear, monthIndex);
+  const gau = calculateMonthlyPersonTotals("gau", summaryYear, monthIndex);
 
-  renderAllTransactions();
-}
+  const both = {
+    income: ca.income + gau.income,
+    expense: ca.expense + gau.expense,
+    balance: ca.balance + gau.balance
+  };
 
-function getAllSummaryTransactions() {
-  const allTransactions = [
-    ...data.ca.map(item => ({
-      ...item,
-      person: "Cá",
-      personKey: "ca"
-    })),
-    ...data.gau.map(item => ({
-      ...item,
-      person: "Gấu",
-      personKey: "gau"
-    }))
-  ];
-
-  return allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-}
-
-function renderAllTransactions(customTransactions = null) {
-  const tableBody = document.getElementById("all-transaction-body");
-
-  if (!tableBody) return;
-
-  tableBody.innerHTML = "";
-
-  const allTransactions = customTransactions || getAllSummaryTransactions();
-
-  if (allTransactions.length === 0) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="5">Chưa có giao dịch nào.</td>
-      </tr>
-    `;
-
-    return;
-  }
-
-  allTransactions.forEach(item => {
-    const row = document.createElement("tr");
-    const kindLabel = item.shared ? "Chi chung" : "Chi riêng";
-
-    row.innerHTML = `
-      <td>${item.person}</td>
-      <td>${item.date}</td>
-      <td>${item.type === "income" ? "Tiền vào" : "Tiền ra"} / ${kindLabel}</td>
-      <td>${escapeHTML(item.note)}</td>
-      <td>${formatMoney(item.amount)}</td>
-    `;
-
-    tableBody.appendChild(row);
-  });
-}
-
-function applySummaryFilters() {
-  const personFilter = document.getElementById("summary-filter-person")?.value || "all";
-  const kindFilter = document.getElementById("summary-filter-kind")?.value || "all";
-  const typeFilter = document.getElementById("summary-filter-type")?.value || "all";
-  const sortMode = document.getElementById("summary-sort-mode")?.value || "newest";
-
-  let transactions = getAllSummaryTransactions();
-
-  if (personFilter !== "all") {
-    transactions = transactions.filter(item => item.personKey === personFilter);
-  }
-
-  if (kindFilter === "shared") {
-    transactions = transactions.filter(item => item.shared === true);
-  }
-
-  if (kindFilter === "personal") {
-    transactions = transactions.filter(item => item.shared !== true);
-  }
-
-  if (typeFilter !== "all") {
-    transactions = transactions.filter(item => item.type === typeFilter);
-  }
-
-  transactions = sortSummaryTransactions(transactions, sortMode);
-
-  renderAllTransactions(transactions);
-}
-
-function clearSummaryFilters() {
-  const personSelect = document.getElementById("summary-filter-person");
-  const kindSelect = document.getElementById("summary-filter-kind");
-  const typeSelect = document.getElementById("summary-filter-type");
-  const sortSelect = document.getElementById("summary-sort-mode");
-
-  if (personSelect) personSelect.value = "all";
-  if (kindSelect) kindSelect.value = "all";
-  if (typeSelect) typeSelect.value = "all";
-  if (sortSelect) sortSelect.value = "newest";
-
-  renderAllTransactions();
-}
-
-function sortSummaryTransactions(transactions, sortMode) {
-  const copied = [...transactions];
-
-  if (sortMode === "newest") {
-    return copied.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }
-
-  if (sortMode === "oldest") {
-    return copied.sort((a, b) => new Date(a.date) - new Date(b.date));
-  }
-
-  if (sortMode === "amount-desc") {
-    return copied.sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
-  }
-
-  if (sortMode === "amount-asc") {
-    return copied.sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0));
-  }
-
-  return copied;
+  body.innerHTML = `
+    <tr>
+      <td>Cá</td>
+      <td>${formatMoney(ca.income)}</td>
+      <td>${formatMoney(ca.expense)}</td>
+      <td>${formatMoney(ca.balance)}</td>
+    </tr>
+    <tr>
+      <td>Gấu</td>
+      <td>${formatMoney(gau.income)}</td>
+      <td>${formatMoney(gau.expense)}</td>
+      <td>${formatMoney(gau.balance)}</td>
+    </tr>
+    <tr>
+      <td><strong>Cả hai</strong></td>
+      <td><strong>${formatMoney(both.income)}</strong></td>
+      <td><strong>${formatMoney(both.expense)}</strong></td>
+      <td><strong>${formatMoney(both.balance)}</strong></td>
+    </tr>
+  `;
 }
 
 // =========================
