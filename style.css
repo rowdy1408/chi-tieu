@@ -55,6 +55,13 @@ body {
   font-size: 16px;
 }
 
+.error-message {
+  color: #d63031;
+  font-weight: bold;
+}
+
+/* BUTTONS */
+
 button {
   padding: 12px 18px;
   border: none;
@@ -76,9 +83,30 @@ button:hover {
   font-size: 16px;
 }
 
-.error-message {
-  color: #d63031;
-  font-weight: bold;
+.logout-btn,
+.delete-btn {
+  background: #d63031;
+}
+
+.logout-btn:hover,
+.delete-btn:hover {
+  background: #b71c1c;
+}
+
+.edit-btn {
+  background: #0984e3;
+}
+
+.edit-btn:hover {
+  background: #0768b5;
+}
+
+.cancel-btn {
+  background: #636e72;
+}
+
+.cancel-btn:hover {
+  background: #4b5456;
 }
 
 /* HEADER */
@@ -105,14 +133,6 @@ button:hover {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.logout-btn {
-  background: #d63031;
-}
-
-.logout-btn:hover {
-  background: #b71c1c;
 }
 
 /* CONTENT */
@@ -216,7 +236,9 @@ button:hover {
 .form-card,
 .table-section,
 .selected-date-section,
-.summary-card {
+.summary-card,
+.search-section,
+.stats-section {
   background: white;
   border-radius: 20px;
   padding: 20px;
@@ -225,7 +247,10 @@ button:hover {
 }
 
 .form-card h3,
-.form-card h2 {
+.form-card h2,
+.table-section h2,
+.search-section h2,
+.stats-section h2 {
   margin-top: 0;
 }
 
@@ -236,16 +261,22 @@ label {
   font-weight: bold;
 }
 
-input {
+input,
+select {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 12px;
+  background: white;
 }
 
 .form-card button {
   width: 100%;
   margin-top: 18px;
+}
+
+.shared-form {
+  max-width: 620px;
 }
 
 /* TABLE */
@@ -255,6 +286,7 @@ table {
   border-collapse: collapse;
   overflow: hidden;
   border-radius: 16px;
+  margin-top: 16px;
 }
 
 th,
@@ -290,19 +322,12 @@ tfoot td {
   margin-top: 8px;
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .transaction-actions button {
   padding: 8px 10px;
   font-size: 12px;
-}
-
-.edit-btn {
-  background: #0984e3;
-}
-
-.delete-btn {
-  background: #d63031;
 }
 
 /* SUMMARY */
@@ -326,44 +351,7 @@ tfoot td {
   background: #fff2cf;
 }
 
-/* SHARED */
-
-.shared-form {
-  max-width: 600px;
-}
-
-/* RESPONSIVE */
-
-@media (max-width: 900px) {
-  .form-grid,
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-day {
-    min-height: 64px;
-    font-size: 13px;
-  }
-
-  .day-summary {
-    display: none;
-  }
-
-  .month-control {
-    flex-direction: column;
-  }
-}
-
 /* SEARCH */
-
-.search-section,
-.stats-section {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
-}
 
 .search-grid {
   display: grid;
@@ -375,6 +363,7 @@ tfoot td {
   display: flex;
   gap: 12px;
   margin-top: 18px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
@@ -434,6 +423,52 @@ tfoot td {
   max-height: 320px;
 }
 
+/* YEARLY LINE CHART */
+
+.year-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.year-chart-header h2 {
+  margin-bottom: 4px;
+}
+
+.year-chart-header p {
+  margin-top: 0;
+  color: #666;
+}
+
+.year-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.year-actions h3 {
+  margin: 0;
+  min-width: 80px;
+  text-align: center;
+}
+
+#summary-yearly-flow-chart {
+  margin-top: 18px;
+  max-height: 420px;
+}
+
+/* FILTERS */
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
 /* MODAL */
 
 .modal-backdrop {
@@ -470,18 +505,32 @@ tfoot td {
   flex: 1;
 }
 
-.cancel-btn {
-  background: #636e72;
-}
-
-.cancel-btn:hover {
-  background: #4b5456;
-}
+/* RESPONSIVE */
 
 @media (max-width: 900px) {
+  .form-grid,
+  .summary-grid,
   .search-grid,
   .stats-grid,
-  .stats-grid.one-column {
+  .stats-grid.one-column,
+  .filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .calendar-day {
+    min-height: 64px;
+    font-size: 13px;
+  }
+
+  .day-summary {
+    display: none;
+  }
+
+  .month-control {
+    flex-direction: column;
+  }
+
+  .year-chart-header {
+    align-items: flex-start;
   }
 }
