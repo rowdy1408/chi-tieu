@@ -16,12 +16,48 @@ let data = JSON.parse(localStorage.getItem("gauCaExpenseData")) || {
   shared: []
 };
 
+/* =========================
+   BASIC HELPERS
+========================= */
+
 function saveData() {
   localStorage.setItem("gauCaExpenseData", JSON.stringify(data));
 }
 
 function formatMoney(amount) {
   return Number(amount).toLocaleString("vi-VN") + "đ";
+}
+
+function formatInputMoney(value) {
+  const numbersOnly = value.replace(/\D/g, "");
+
+  if (!numbersOnly) return "";
+
+  return numbersOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function parseInputMoney(value) {
+  if (!value) return 0;
+
+  return Number(value.replace(/\./g, ""));
+}
+
+function setupMoneyInputs() {
+  const moneyInputIds = [
+    "income-amount",
+    "expense-amount",
+    "shared-amount"
+  ];
+
+  moneyInputIds.forEach(id => {
+    const input = document.getElementById(id);
+
+    if (!input) return;
+
+    input.addEventListener("input", function () {
+      input.value = formatInputMoney(input.value);
+    });
+  });
 }
 
 function formatDate(date) {
@@ -43,37 +79,31 @@ function getVietnameseDate(dateString) {
   });
 }
 
-/* LOGIN */
+/* =========================
+   LOGIN
+========================= */
 
 function login() {
   const password = document.getElementById("password-input").value.trim();
   const error = document.getElementById("login-error");
 
   if (password === PASSWORDS.gau) {
-  loggedInUser = "gau";
-  currentUser = "gau";
-  showApp();
-  showPersonalPage("gau");
-} else if (password === PASSWORDS.ca) {
-  loggedInUser = "ca";
-  currentUser = "ca";
-  showApp();
-  showPersonalPage("ca");
-} else if (password === PASSWORDS.summary) {
-  loggedInUser = "summary";
-  currentUser = "summary";
-  showApp();
-  showSummaryPage();
-}
-}
-
-function goBackToPersonalPage() {
-  if (loggedInUser === "ca") {
-    showPersonalPage("ca");
-  } else if (loggedInUser === "gau") {
+    loggedInUser = "gau";
+    currentUser = "gau";
+    showApp();
     showPersonalPage("gau");
-  } else {
+  } else if (password === PASSWORDS.ca) {
+    loggedInUser = "ca";
+    currentUser = "ca";
+    showApp();
+    showPersonalPage("ca");
+  } else if (password === PASSWORDS.summary) {
+    loggedInUser = "summary";
+    currentUser = "summary";
+    showApp();
     showSummaryPage();
+  } else {
+    error.textContent = "Sai password rồi ạ. Papa/Mama thử lại nha.";
   }
 }
 
@@ -86,6 +116,21 @@ function logout() {
 
   document.getElementById("login-page").classList.remove("hidden");
   document.getElementById("app-page").classList.add("hidden");
+}
+
+function showApp() {
+  document.getElementById("login-page").classList.add("hidden");
+  document.getElementById("app-page").classList.remove("hidden");
+}
+
+/* =========================
+   PAGE ROUTING
+========================= */
+
+function hideAllMainPages() {
+  document.getElementById("personal-page").classList.add("hidden");
+  document.getElementById("shared-page").classList.add("hidden");
+  document.getElementById("summary-page").classList.add("hidden");
 }
 
 function updateNavButtons() {
@@ -104,23 +149,21 @@ function updateNavButtons() {
   }
 }
 
-function showApp() {
-  document.getElementById("login-page").classList.add("hidden");
-  document.getElementById("app-page").classList.remove("hidden");
-}
-
-/* PAGE ROUTING */
-
-function hideAllMainPages() {
-  document.getElementById("personal-page").classList.add("hidden");
-  document.getElementById("shared-page").classList.add("hidden");
-  document.getElementById("summary-page").classList.add("hidden");
+function goBackToPersonalPage() {
+  if (loggedInUser === "ca") {
+    showPersonalPage("ca");
+  } else if (loggedInUser === "gau") {
+    showPersonalPage("gau");
+  } else {
+    showSummaryPage();
+  }
 }
 
 function showPersonalPage(person) {
   currentUser = person;
 
   hideAllMainPages();
+  updateNavButtons();
 
   document.getElementById("personal-page").classList.remove("hidden");
 
@@ -132,11 +175,11 @@ function showPersonalPage(person) {
   renderCalendar();
   renderDailyTable();
   renderMonthSummary();
-  updateNavButtons();
 }
 
 function showSharedPage() {
   hideAllMainPages();
+  updateNavButtons();
 
   document.getElementById("shared-page").classList.remove("hidden");
 
@@ -146,11 +189,11 @@ function showSharedPage() {
   document.getElementById("shared-date").value = selectedDate;
 
   renderSharedTable();
-  updateNavButtons();
 }
 
 function showSummaryPage() {
   hideAllMainPages();
+  updateNavButtons();
 
   document.getElementById("summary-page").classList.remove("hidden");
 
@@ -158,10 +201,11 @@ function showSummaryPage() {
   document.getElementById("page-subtitle").textContent = "Xem tổng tiền vào, tiền ra và số dư của cả hai";
 
   renderSummaryPage();
-  updateNavButtons();
 }
 
-/* CALENDAR */
+/* =========================
+   CALENDAR
+========================= */
 
 function changeMonth(direction) {
   currentDate.setMonth(currentDate.getMonth() + direction);
@@ -173,6 +217,8 @@ function changeMonth(direction) {
 function renderCalendar() {
   const calendarGrid = document.getElementById("calendar-grid");
   const monthLabel = document.getElementById("current-month-label");
+
+  if (!calendarGrid || !monthLabel) return;
 
   calendarGrid.innerHTML = "";
 
@@ -219,6 +265,7 @@ function renderCalendar() {
 
     dayCell.onclick = function () {
       selectedDate = dateString;
+
       renderCalendar();
       renderDailyTable();
       renderMonthSummary();
@@ -252,10 +299,12 @@ function getDailySummary(person, dateString) {
   };
 }
 
-/* ADD PERSONAL INCOME / EXPENSE */
+/* =========================
+   ADD PERSONAL INCOME / EXPENSE
+========================= */
 
 function addIncome() {
-  const amount = Number(document.getElementById("income-amount").value);
+  const amount = parseInputMoney(document.getElementById("income-amount").value);
   const note = document.getElementById("income-note").value.trim();
 
   if (!amount || !note) {
@@ -283,7 +332,7 @@ function addIncome() {
 }
 
 function addExpense() {
-  const amount = Number(document.getElementById("expense-amount").value);
+  const amount = parseInputMoney(document.getElementById("expense-amount").value);
   const note = document.getElementById("expense-note").value.trim();
 
   if (!amount || !note) {
@@ -310,7 +359,9 @@ function addExpense() {
   renderMonthSummary();
 }
 
-/* DAILY TABLE */
+/* =========================
+   DAILY TABLE
+========================= */
 
 function renderDailyTable() {
   if (!currentUser || currentUser === "summary") return;
@@ -318,6 +369,8 @@ function renderDailyTable() {
   const title = document.getElementById("selected-date-title");
   const tableBody = document.getElementById("daily-table-body");
   const balanceCell = document.getElementById("daily-balance");
+
+  if (!title || !tableBody || !balanceCell) return;
 
   title.textContent = `Chi tiêu ngày ${getVietnameseDate(selectedDate)}`;
 
@@ -383,10 +436,20 @@ function editTransaction(person, id) {
 
   if (!item) return;
 
-  const newAmount = Number(prompt("Nhập số tiền mới:", item.amount));
+  const newAmountInput = prompt(
+    "Nhập số tiền mới:",
+    formatInputMoney(String(item.amount))
+  );
+
+  if (newAmountInput === null) return;
+
   const newNote = prompt("Nhập nội dung mới:", item.note);
 
-  if (!newAmount || !newNote) {
+  if (newNote === null) return;
+
+  const newAmount = parseInputMoney(newAmountInput);
+
+  if (!newAmount || !newNote.trim()) {
     alert("Thông tin không hợp lệ.");
     return;
   }
@@ -399,7 +462,10 @@ function editTransaction(person, id) {
   renderCalendar();
   renderDailyTable();
   renderMonthSummary();
-  renderSummaryPage();
+
+  if (document.getElementById("summary-page") && !document.getElementById("summary-page").classList.contains("hidden")) {
+    renderSummaryPage();
+  }
 }
 
 function deleteTransaction(person, id) {
@@ -414,10 +480,15 @@ function deleteTransaction(person, id) {
   renderCalendar();
   renderDailyTable();
   renderMonthSummary();
-  renderSummaryPage();
+
+  if (document.getElementById("summary-page") && !document.getElementById("summary-page").classList.contains("hidden")) {
+    renderSummaryPage();
+  }
 }
 
-/* MONTH SUMMARY */
+/* =========================
+   MONTH SUMMARY
+========================= */
 
 function renderMonthSummary() {
   if (!currentUser || currentUser === "summary") return;
@@ -444,11 +515,13 @@ function renderMonthSummary() {
   document.getElementById("month-balance").textContent = formatMoney(income - expense);
 }
 
-/* SHARED EXPENSE */
+/* =========================
+   SHARED EXPENSE
+========================= */
 
 function addSharedExpense() {
   const date = document.getElementById("shared-date").value;
-  const amount = Number(document.getElementById("shared-amount").value);
+  const amount = parseInputMoney(document.getElementById("shared-amount").value);
   const note = document.getElementById("shared-note").value.trim();
 
   if (!date || !amount || !note) {
@@ -503,6 +576,8 @@ function addSharedExpense() {
 function renderSharedTable() {
   const tableBody = document.getElementById("shared-table-body");
 
+  if (!tableBody) return;
+
   tableBody.innerHTML = "";
 
   if (data.shared.length === 0) {
@@ -547,7 +622,10 @@ function deleteSharedExpense(sharedId) {
   saveData();
 
   renderSharedTable();
-  renderSummaryPage();
+
+  if (document.getElementById("summary-page") && !document.getElementById("summary-page").classList.contains("hidden")) {
+    renderSummaryPage();
+  }
 
   if (currentUser === "ca" || currentUser === "gau") {
     renderCalendar();
@@ -556,7 +634,9 @@ function deleteSharedExpense(sharedId) {
   }
 }
 
-/* SUMMARY PAGE */
+/* =========================
+   SUMMARY PAGE
+========================= */
 
 function calculatePersonTotal(person) {
   const income = data[person]
@@ -595,6 +675,8 @@ function renderSummaryPage() {
 
 function renderAllTransactions() {
   const tableBody = document.getElementById("all-transaction-body");
+
+  if (!tableBody) return;
 
   tableBody.innerHTML = "";
 
@@ -635,3 +717,9 @@ function renderAllTransactions() {
     tableBody.appendChild(row);
   });
 }
+
+/* =========================
+   INITIAL SETUP
+========================= */
+
+setupMoneyInputs();
